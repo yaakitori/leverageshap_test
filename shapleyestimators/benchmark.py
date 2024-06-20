@@ -16,7 +16,9 @@ def read_file(dataset, estimator):
         return saved
     with open(filename, 'r') as f:
         for line in f:
-            dict = eval(line)
+            if 'nan' in line:
+                continue
+            dict = eval(line)            
             if dict['sample_size'] not in saved:
                 saved[dict['sample_size']] = []
             saved[dict['sample_size']].append(dict['error'])
@@ -38,7 +40,7 @@ def benchmark(num_runs, dataset, estimators, sample_sizes = [1000], silent=False
     for run_idx in tqdm(range(num_runs), disable=silent):
         for sample_size in sample_sizes:            
             # Randomly choose a baseline and explicand
-            np.random.seed(run_idx * num_runs + sample_size)
+            #np.random.seed(run_idx * num_runs + sample_size)
             baseline_idx = np.random.choice(X.shape[0])
             explicand_idx = np.random.choice(X.shape[0])
             baseline = X.iloc[baseline_idx].values.reshape(1, -1)
