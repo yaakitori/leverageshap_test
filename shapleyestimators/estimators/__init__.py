@@ -1,6 +1,7 @@
 from .kernel import kernel_shap
 from .sampling import shapley_sampling
 from .tree import tree_shap
+from .permutation import permutation_shap
 
 import numpy as np
 import xgboost as xgb
@@ -285,6 +286,7 @@ def uniform_sampling_adjusted2(baseline, explicand, model, num_samples):
     return phi
 
 estimators = {
+    'Permuation SHAP': permutation_shap,
     'Kernel SHAP': kernel_shap,
     'Sampling SHAP': shapley_sampling,
     'Tree SHAP': tree_shap,
