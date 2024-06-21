@@ -2,52 +2,63 @@ from .kernel import kernel_shap
 from .sampling import shapley_sampling
 from .tree import tree_shap
 from .permutation import permutation_shap
+from .complementary import complementary_contribution
 
 import numpy as np
 import xgboost as xgb
 
-#def regression_adjustment(baseline, explicand, model, num_samples):
-#    num_features = baseline.shape[1]
-#    gen = np.random.Generator(np.random.PCG64())
-#    eval_model = lambda X : model.predict(X)
-#    num_samples //= 2
-#    # Learn a model to explain the predictions of the original model
-#    synth_data = np.tile(baseline, (num_samples, 1))
-#    for idx in range(num_samples):
-#        # randomly choose a subset of features to mask
-#        sample_size = gen.integers(1, num_features, endpoint=True)
-#        chosen = gen.choice(range(num_features), sample_size, replace=False)
-#        # create masked input as combination of baseline and explicand
-#        synth_data[idx, chosen] = explicand[0, chosen]
-#
-#    predictions = eval_model(synth_data)
-#    shap_model = xgb.XGBRegressor(n_estimators=100, max_depth=4).fit(synth_data, predictions)
-#    chosens = np.zeros((num_samples, num_features))
-#
-#    # Estimate shapley values for the explicand with regression adjustment
-#    synth_data = np.tile(baseline, (num_samples, 1))
-#    for idx in range(num_samples):
-#        sample_size = gen.integers(1, num_features, endpoint=True)
-#        chosen = gen.choice(range(num_features), sample_size, replace=False)
-#        chosens[idx, chosen] = 1
-#        synth_data[idx, chosen] = explicand[0, chosen]
-#
-#    predictions = eval_model(synth_data)
-#    adjustment = shap_model.predict(synth_data)
-#    adjustment_centered = adjustment - np.mean(adjustment)
-#
-#    phi = np.zeros((2,num_features))
-#    num_values = np.zeros((2,num_features))
-#    for idx in range(num_samples):
-#        val = predictions[idx] - adjustment_centered[idx]
-#        for i in range(num_features):
-#            sign = 1 if chosens[idx,i] == 1 else 0
-#            phi[sign,i] += val
-#            num_values[sign,i] += 1
-#
-#    phi /= num_values
-#    phi = phi[1] - phi[0]
-#    return phi
+def embedded_lattice(baseline, explicand, model, num_samples):
+    eval_model = lambda X : model.predict(X)
+    gen = np.random.Generator(np.random.PCG64())
+    n = baseline.shape[1] # number of items
+    # k is the number of items in a group    
+    # number of function calls = num_groups * samples_per_group
+    # num_groups = n/k
+    # samples_per_group = 2^k 
+    k = 1 
+    while n / (k+1) * 2**(k+1) <= num_samples: k += 1    
+    # Randomly partition the n features into groups of size k
+    permutation = gen.permutation(n)
+    num_groups = (n + k - 1) // k # Round up
+    groups = np.array_split(permutation, num_groups)
+    # All binary strings of length k
+    binary_strings = np.array([list(np.binary_repr(i, width=k)) for i in range(2**k)], dtype=int)
+    # Sparse matrix of all binary strings
+    edges_in_lattice = {}
+    # Lookup table for binary strings
+    binary_lookup = {}
+    for idx, binary in enumerate(binary_strings):
+        binary_lookup[tuple(binary)] = idx
+    for i in range(k):
+        edges_in_lattice[i] = []
+        for idx, binary in enumerate(binary_strings):            
+            if binary[i] == 1:
+                binary_from = binary.copy()
+                binary_from[i] = 0
+                idx_from = binary_lookup[tuple(binary_from)]
+                edges_in_lattice[i].append((idx_from, idx))
+    estimates = np.zeros(n)
+    nestimates = np.zeros(n)
+    for group in groups:
+        # Ensure length of group is k
+        if len(group) < k:
+            remaining_items = np.setdiff1d(permutation, group)
+            additional = gen.choice(remaining_items, k - len(group), replace=False)
+            group = np.append(group, additional)
+        # Create inputs
+        inputs = np.tile(baseline, (2**k, 1))
+        for i, binary in enumerate(binary_strings):
+            included = group[binary.astype(bool)]
+            inputs[i, included] = explicand[0, included]
+        outputs = eval_model(inputs)
+        for i in group:
+            i_lattice = np.where(group == i)[0][0]
+            for (idx_from, idx_to) in edges_in_lattice[i_lattice]:
+                estimates[i] += outputs[idx_to] - outputs[idx_from]
+                nestimates[i] += 1
+    phi = estimates / nestimates
+
+    return phi    
 
 def recycled_sampling(baseline, explicand, model, num_samples):
     eval_model = lambda X : model.predict(X)
@@ -56,7 +67,7 @@ def recycled_sampling(baseline, explicand, model, num_samples):
     synth_data = np.tile(baseline, (num_samples, 1))
     chosens = np.zeros((num_samples, num_features))
     for idx in range(num_samples):
-        sample_size = gen.integers(1, num_features, endpoint=True)
+        sample_size = gen.integers(0, num_features, endpoint=True)
         chosen = gen.choice(range(num_features), sample_size, replace=False)
         chosens[idx, chosen] = 1
         synth_data[idx, chosen] = explicand[0, chosen]
@@ -149,7 +160,7 @@ def uniform_sampling(baseline, explicand, model, num_samples):
         with_data = np.tile(baseline, (num_samples_per_feature, 1))
         without_data = np.tile(baseline, (num_samples_per_feature, 1))
         for idx in range(num_samples_per_feature):            
-            sample_size = gen.integers(1, num_features, endpoint=True)
+            sample_size = gen.integers(0, num_features, endpoint=True)
             chosen = gen.choice(range(num_features), sample_size, replace=False)
             if i not in chosen:
                 chosen = np.append(chosen, i)
@@ -176,7 +187,7 @@ def uniform_sampling_sum(baseline, explicand, model, num_samples):
         with_data = np.tile(baseline, (num_samples_per_feature, 1))
         without_data = np.tile(baseline, (num_samples_per_feature, 1))
         for idx in range(num_samples_per_feature):            
-            sample_size = gen.integers(1, num_features, endpoint=True)
+            sample_size = gen.integers(0, num_features, endpoint=True)
             chosen = gen.choice(range(num_features), sample_size, replace=False)
             if i not in chosen:
                 chosen = np.append(chosen, i)
@@ -206,7 +217,7 @@ def uniform_sampling_offset(baseline, explicand, model, num_samples, offset=0):
         with_data = np.tile(baseline, (num_samples_per_feature, 1))
         without_data = np.tile(baseline, (num_samples_per_feature, 1))
         for idx in range(num_samples_per_feature):            
-            sample_size = gen.integers(1, num_features, endpoint=True)
+            sample_size = gen.integers(0, num_features, endpoint=True)
             chosen = gen.choice(range(num_features), sample_size, replace=False)
             # Remove offset number of samples from chosen
             if offset > 0:
@@ -234,7 +245,7 @@ def uniform_sampling_adjusted(baseline, explicand, model, num_samples):
         with_data = np.tile(baseline, (num_samples_per_feature, 1))
         without_data = np.tile(baseline, (num_samples_per_feature, 1))
         for idx in range(num_samples_per_feature):            
-            sample_size = gen.integers(1, num_features, endpoint=True)
+            sample_size = gen.integers(0, num_features, endpoint=True)
             chosen = gen.choice(range(num_features), sample_size, replace=False)
             if i not in chosen:
                 chosen = np.append(chosen, i)
@@ -263,7 +274,7 @@ def uniform_sampling_adjusted2(baseline, explicand, model, num_samples):
         with_data = np.tile(baseline, (num_samples_per_feature, 1))
         without_data = np.tile(baseline, (num_samples_per_feature, 1))
         for idx in range(num_samples_per_feature):            
-            sample_size = gen.integers(1, num_features, endpoint=True)
+            sample_size = gen.integers(0, num_features, endpoint=True)
             chosen = gen.choice(range(num_features), sample_size, replace=False)
             if i not in chosen:
                 chosen = np.append(chosen, i)
@@ -301,6 +312,8 @@ estimators = {
 #    'Uniform Sampling Clever' : uniform_sampling_clever,
     'Uniform Sampling Sum' : uniform_sampling_sum,
     'Permutation Recycling' : permutation_recycling,
+    'Complementary Contribution' : complementary_contribution, # Slow
+    'Embedded Lattice' : embedded_lattice,
 }
 
 for offset in [0,10,20,30,40,50,60,70,80,90,100]:

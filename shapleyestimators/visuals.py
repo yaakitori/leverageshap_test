@@ -16,6 +16,7 @@ def plot_data(results, dataset, filename=None, exclude=[]):
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     plt.title(f'{dataset} Benchmark')
     plt.yscale('log')
+    plt.xscale('log')
     plt.xlabel('Sample Size')
     plt.ylabel('Squared Error')
     if filename is not None:

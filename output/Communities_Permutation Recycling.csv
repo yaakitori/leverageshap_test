@@ -58,3 +58,7 @@
 {'sample_size': 2000, 'error': 41.83945902252698}
 {'sample_size': 5000, 'error': 39.73935484668449}
 {'sample_size': 10000, 'error': 5.606563958130968}
+{'sample_size': 300, 'error': 385.59131579437826}
+{'sample_size': 300, 'error': 915.7620083078983}
+{'sample_size': 300, 'error': 630.2674973009254}
+{'sample_size': 300, 'error': 181.7317399733376}

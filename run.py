@@ -8,6 +8,6 @@ results = se.benchmark(num_runs, dataset, se.estimators, sample_sizes)
 
 image_filename = f'images/{dataset}.pdf'
 
-exclude= ['Tree SHAP', 'Recycled Sampling', 'Uniform Sampling', 'Uniform Sampling Adjusted', 'Uniform Sampling Adjusted 2x', 'Uniform Sampling Sum']
+exclude= ['Tree SHAP', 'Recycled Sampling', 'Uniform Sampling Adjusted', 'Uniform Sampling Adjusted 2x', 'Uniform Sampling Sum']
 
 se.plot_data(results, dataset, image_filename, exclude=exclude)
