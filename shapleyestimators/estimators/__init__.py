@@ -15,12 +15,12 @@ def embedded_lattice(baseline, explicand, model, num_samples):
     # number of function calls = num_groups * samples_per_group
     # num_groups = n/k
     # samples_per_group = 2^k 
-    k = 1 
-    while n / (k+1) * 2**(k+1) <= num_samples: k += 1    
-    # Randomly partition the n features into groups of size k
-    permutation = gen.permutation(n)
+    num_reps = 1
+    while n * num_reps <= num_samples: num_reps += 1
+    num_reps = min(num_reps, 10)
+    k = 1
+    while n / (k+1) * 2**(k+1) * num_reps <= num_samples: k += 1    
     num_groups = (n + k - 1) // k # Round up
-    groups = np.array_split(permutation, num_groups)
     # All binary strings of length k
     binary_strings = np.array([list(np.binary_repr(i, width=k)) for i in range(2**k)], dtype=int)
     # Sparse matrix of all binary strings
@@ -37,25 +37,43 @@ def embedded_lattice(baseline, explicand, model, num_samples):
                 binary_from[i] = 0
                 idx_from = binary_lookup[tuple(binary_from)]
                 edges_in_lattice[i].append((idx_from, idx))
+        #print(edges_in_lattice[i])
     estimates = np.zeros(n)
     nestimates = np.zeros(n)
-    for group in groups:
-        # Ensure length of group is k
-        if len(group) < k:
+    for _ in range(num_reps):
+        # Randomly partition the n features into groups of size k
+        permutation = gen.permutation(n) 
+        groups = np.array_split(permutation, num_groups)
+        for group in groups:
+            # Ensure length of group is k
+            if len(group) < k:
+                remaining_items = np.setdiff1d(permutation, group)
+                additional = gen.choice(remaining_items, k - len(group), replace=False)
+                group = np.append(group, additional)
+            # Random assignment to remaining items
             remaining_items = np.setdiff1d(permutation, group)
-            additional = gen.choice(remaining_items, k - len(group), replace=False)
-            group = np.append(group, additional)
-        # Create inputs
-        inputs = np.tile(baseline, (2**k, 1))
-        for i, binary in enumerate(binary_strings):
-            included = group[binary.astype(bool)]
-            inputs[i, included] = explicand[0, included]
-        outputs = eval_model(inputs)
-        for i in group:
-            i_lattice = np.where(group == i)[0][0]
-            for (idx_from, idx_to) in edges_in_lattice[i_lattice]:
-                estimates[i] += outputs[idx_to] - outputs[idx_from]
-                nestimates[i] += 1
+            set_size = gen.integers(0, len(remaining_items), endpoint=True)
+            additional = gen.choice(remaining_items, set_size, replace=False)
+            baseline_copy = baseline.copy()
+            baseline_copy[0, additional] = explicand[0, additional]
+            # Create inputs
+            inputs = np.tile(baseline_copy, (2**k, 1))
+            for i, binary in enumerate(binary_strings):
+                #print(f'Group {group} Binary {binary}')
+                #print(f'Included {group[binary.astype(bool)]}')
+                included = group[binary.astype(bool)]
+                inputs[i, included] = explicand[0, included]
+            outputs = eval_model(inputs)
+            for i in group:
+                i_lattice = np.where(group == i)[0][0]
+                for (idx_from, idx_to) in edges_in_lattice[i_lattice]:                
+                    #print(f'Estimating {i} from {group} ({i_lattice} in group)')
+                    #print(f'From {idx_from} to {idx_to}')
+                    #print(f'{binary_strings[idx_from]} -> {binary_strings[idx_to]}')
+                    estimates[i] += outputs[idx_to] - outputs[idx_from]
+                    nestimates[i] += 1
+        #print(estimates)
+    #print(nestimates)
     phi = estimates / nestimates
 
     return phi    

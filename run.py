@@ -10,4 +10,8 @@ image_filename = f'images/{dataset}.pdf'
 
 exclude= ['Tree SHAP', 'Recycled Sampling', 'Uniform Sampling Adjusted', 'Uniform Sampling Adjusted 2x', 'Uniform Sampling Sum']
 
+for name in se.estimators:
+    if 'Offset' in name:
+        exclude.append(name)
+
 se.plot_data(results, dataset, image_filename, exclude=exclude)
