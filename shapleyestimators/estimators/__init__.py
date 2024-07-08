@@ -1,3 +1,4 @@
+import scipy.special
 from .kernel import kernel_shap
 from .sampling import shapley_sampling
 from .tree import tree_shap
@@ -6,6 +7,7 @@ from .complementary import complementary_contribution
 
 import numpy as np
 import xgboost as xgb
+import scipy
 
 def embedded_lattice(baseline, explicand, model, num_samples):
     eval_model = lambda X : model.predict(X)
@@ -314,6 +316,34 @@ def uniform_sampling_adjusted2(baseline, explicand, model, num_samples):
         phi[0,i] = np.mean(with_vals - without_vals - adjustment_with_centered + adjustment_without_centered)
     return phi
 
+def kernel_shap_mine(baseline, explicand, model, num_samples):
+    eval_model = lambda X : model.predict(X)
+    num_features = baseline.shape[1]
+    weight = lambda s : 1 / (scipy.special.comb(num_features, s))# * s * (num_features - s))
+    weight = lambda s : 1 / ( s * (num_features - s) )
+    gen = np.random.Generator(np.random.PCG64()) 
+    all_s = np.array(list(range(1, num_features)))
+    prob_s = weight(all_s)
+    # Normalize
+    prob_s /= prob_s.sum()
+    sampled_s = gen.choice(all_s, num_samples-2, p=prob_s, replace=True)
+    X = np.zeros((num_samples, num_features))
+    X[-1] = 1 # Full set
+    X[-2] = 0 # Empty set
+    for idx, s in enumerate(sampled_s):
+        z = gen.choice(num_features, s, replace=False)
+        X[idx, z] = 1
+    diag_weights = weight(sampled_s)
+    large_val = 1e6
+    diag_weights = np.append(diag_weights, [large_val, large_val])
+    W = np.diag(1 / np.sqrt(diag_weights * num_samples))
+    baseline_tiled = np.tile(baseline, (num_samples, 1))
+    explicand_tiled = np.tile(explicand, (num_samples, 1))
+    inputs = baseline_tiled * (1 - X) + explicand_tiled * X
+    y = eval_model(inputs)
+    phi = np.linalg.inv(X.T @ W @ X) @ X.T @ W @ y
+    return phi
+
 estimators = {
     'Permuation SHAP': permutation_shap,
     'Kernel SHAP': kernel_shap,
@@ -332,6 +362,7 @@ estimators = {
     'Permutation Recycling' : permutation_recycling,
     'Complementary Contribution' : complementary_contribution, # Slow
     'Embedded Lattice' : embedded_lattice,
+    'Custom Kernel SHAP' : kernel_shap_mine,
 }
 
 for offset in [0,10,20,30,40,50,60,70,80,90,100]:
