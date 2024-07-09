@@ -319,13 +319,11 @@ def uniform_sampling_adjusted2(baseline, explicand, model, num_samples):
 def kernel_shap_mine(baseline, explicand, model, num_samples):
     eval_model = lambda X : model.predict(X)
     num_features = baseline.shape[1]
-    weight = lambda s : 1 / (scipy.special.comb(num_features, s))# * s * (num_features - s))
-    weight = lambda s : 1 / ( s * (num_features - s) )
     gen = np.random.Generator(np.random.PCG64()) 
     all_s = np.array(list(range(1, num_features)))
-    prob_s = weight(all_s)
+    prob_s = (num_features - all_s) * all_s
     # Normalize
-    prob_s /= prob_s.sum()
+    prob_s = prob_s / prob_s.sum()
     sampled_s = gen.choice(all_s, num_samples-2, p=prob_s, replace=True)
     X = np.zeros((num_samples, num_features))
     X[-1] = 1 # Full set
@@ -333,15 +331,15 @@ def kernel_shap_mine(baseline, explicand, model, num_samples):
     for idx, s in enumerate(sampled_s):
         z = gen.choice(num_features, s, replace=False)
         X[idx, z] = 1
-    diag_weights = weight(sampled_s)
+    diag_weights = 1 / scipy.special.comb(num_features, sampled_s)    
     large_val = 1e6
     diag_weights = np.append(diag_weights, [large_val, large_val])
-    W = np.diag(1 / np.sqrt(diag_weights * num_samples))
+    W = np.diag(diag_weights)
     baseline_tiled = np.tile(baseline, (num_samples, 1))
     explicand_tiled = np.tile(explicand, (num_samples, 1))
     inputs = baseline_tiled * (1 - X) + explicand_tiled * X
     y = eval_model(inputs)
-    phi = np.linalg.inv(X.T @ W @ X) @ X.T @ W @ y
+    phi, _, _, _ = np.linalg.lstsq(np.sqrt(W) @ X, np.sqrt(W) @ y, rcond=None)
     return phi
 
 estimators = {
