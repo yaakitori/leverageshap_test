@@ -2,7 +2,8 @@ import shapleyestimators as se
 
 num_runs = 10
 dataset = 'Communities'
-sample_sizes = [300, 500, 1000, 2000, 5000, 10000]
+sample_sizes = [.5 * 1e3, 1e3, .5 * 1e4, 1e4]
+sample_sizes = [int(s) for s in sample_sizes]
 
 results = se.benchmark(num_runs, dataset, se.estimators, sample_sizes)
 

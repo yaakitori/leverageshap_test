@@ -316,31 +316,46 @@ def uniform_sampling_adjusted2(baseline, explicand, model, num_samples):
         phi[0,i] = np.mean(with_vals - without_vals - adjustment_with_centered + adjustment_without_centered)
     return phi
 
-def kernel_shap_mine(baseline, explicand, model, num_samples):
+def kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=True):
     eval_model = lambda X : model.predict(X)
     num_features = baseline.shape[1]
     gen = np.random.Generator(np.random.PCG64()) 
-    all_s = np.array(list(range(1, num_features)))
+    all_s = np.array(list(range(1, num_features-1)))
     prob_s = (num_features - all_s) * all_s
+    if not original_weight:
+        prob_s = np.ones_like(prob_s)
     # Normalize
     prob_s = prob_s / prob_s.sum()
     sampled_s = gen.choice(all_s, num_samples-2, p=prob_s, replace=True)
-    X = np.zeros((num_samples, num_features))
-    X[-1] = 1 # Full set
-    X[-2] = 0 # Empty set
+    import matplotlib.pyplot as plt
+    plt.hist(sampled_s, bins=100)
+    plt.show()
+    X = np.zeros((num_samples-2, num_features))
+    fbaseline = eval_model(baseline)
+    fexplicand = eval_model(explicand)
     for idx, s in enumerate(sampled_s):
         z = gen.choice(num_features, s, replace=False)
         X[idx, z] = 1
-    diag_weights = 1 / scipy.special.comb(num_features, sampled_s)    
-    large_val = 1e6
-    diag_weights = np.append(diag_weights, [large_val, large_val])
+    diag_weights = 1 / (scipy.special.comb(num_features, sampled_s) * (num_features - sampled_s) * sampled_s)
+    #diag_weights = np.ones_like(diag_weights)
     W = np.diag(diag_weights)
-    baseline_tiled = np.tile(baseline, (num_samples, 1))
-    explicand_tiled = np.tile(explicand, (num_samples, 1))
+    baseline_tiled = np.tile(baseline, (num_samples-2, 1))
+    explicand_tiled = np.tile(explicand, (num_samples-2, 1))
     inputs = baseline_tiled * (1 - X) + explicand_tiled * X
-    y = eval_model(inputs)
-    phi, _, _, _ = np.linalg.lstsq(np.sqrt(W) @ X, np.sqrt(W) @ y, rcond=None)
-    return phi
+    y = eval_model(inputs) - fbaseline
+    # [ Q E^T] [ x ] = c
+    # [ E 0 ] [ lambda ] = d
+    Q = X.T @ W @ X
+    c = X.T @ W @ y * 2
+    d = fexplicand - fbaseline
+    E = np.ones(num_features)
+    A = np.block([[Q, E.reshape(-1,1)], [E, 0]])
+    b = np.append(c, d)
+    phi = np.linalg.solve(A, b) 
+    return phi[:-1]
+
+def kernel_shap_mine_leverage(baseline, explicand, model, num_samples):
+    return kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=False)
 
 estimators = {
     'Permuation SHAP': permutation_shap,
@@ -360,8 +375,9 @@ estimators = {
     'Permutation Recycling' : permutation_recycling,
     'Complementary Contribution' : complementary_contribution, # Slow
     'Embedded Lattice' : embedded_lattice,
-    'Custom Kernel SHAP' : kernel_shap_mine,
+    'My Kernel SHAP Original' : kernel_shap_mine,
+    'My Kernel SHAP Leverage' : kernel_shap_mine_leverage,
 }
 
-for offset in [0,10,20,30,40,50,60,70,80,90,100]:
-    estimators[f'Uniform Sampling Offset {offset}'] = lambda baseline, explicand, model, num_samples, offset=offset : uniform_sampling_offset(baseline, explicand, model, num_samples, offset=offset)
+#for offset in [0,10,20,30,40,50,60,70,80,90,100]:
+#    estimators[f'Uniform Sampling Offset {offset}'] = lambda baseline, explicand, model, num_samples, offset=offset : uniform_sampling_offset(baseline, explicand, model, num_samples, offset=offset)
