@@ -321,15 +321,12 @@ def kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=Tr
     num_features = baseline.shape[1]
     gen = np.random.Generator(np.random.PCG64()) 
     all_s = np.array(list(range(1, num_features-1)))
-    prob_s = (num_features - all_s) * all_s
+    prob_s = 1 / ((num_features - all_s) * all_s)
     if not original_weight:
         prob_s = np.ones_like(prob_s)
     # Normalize
     prob_s = prob_s / prob_s.sum()
     sampled_s = gen.choice(all_s, num_samples-2, p=prob_s, replace=True)
-    import matplotlib.pyplot as plt
-    plt.hist(sampled_s, bins=100)
-    plt.show()
     X = np.zeros((num_samples-2, num_features))
     fbaseline = eval_model(baseline)
     fexplicand = eval_model(explicand)
@@ -337,7 +334,7 @@ def kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=Tr
         z = gen.choice(num_features, s, replace=False)
         X[idx, z] = 1
     diag_weights = 1 / (scipy.special.comb(num_features, sampled_s) * (num_features - sampled_s) * sampled_s)
-    #diag_weights = np.ones_like(diag_weights)
+    diag_weights = np.ones_like(diag_weights)
     W = np.diag(diag_weights)
     baseline_tiled = np.tile(baseline, (num_samples-2, 1))
     explicand_tiled = np.tile(explicand, (num_samples-2, 1))
@@ -346,7 +343,7 @@ def kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=Tr
     # [ Q E^T] [ x ] = c
     # [ E 0 ] [ lambda ] = d
     Q = X.T @ W @ X
-    c = X.T @ W @ y * 2
+    c = X.T @ W @ y
     d = fexplicand - fbaseline
     E = np.ones(num_features)
     A = np.block([[Q, E.reshape(-1,1)], [E, 0]])
@@ -356,6 +353,34 @@ def kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=Tr
 
 def kernel_shap_mine_leverage(baseline, explicand, model, num_samples):
     return kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=False)
+
+def kernel_refined(baseline, explicand, model, num_samples):
+    eval_model = lambda X : model.predict(X)
+    num_features = baseline.shape[1]
+    gen = np.random.Generator(np.random.PCG64())
+
+    all_s = np.array(list(range(1, num_features-1)))
+    prob_s = 1 / ((num_features - all_s) * all_s)
+    # Normalize
+    prob_s = prob_s / prob_s.sum()
+    sampled_s = gen.choice(all_s, (num_samples-2)//2, p=prob_s, replace=True)
+    Z = np.zeros((num_samples-2, num_features))
+    v0 = eval_model(baseline)
+    v1 = eval_model(explicand)
+    for idx, s in enumerate(sampled_s):
+        z = gen.choice(num_features, s, replace=False)
+        complement = np.setdiff1d(range(num_features), z)
+        Z[2*idx, z] = 1
+        Z[2*idx+1, complement] = 1
+    inputs = baseline * (1 - Z) + explicand * Z
+    vz = eval_model(inputs) - v0
+    Z_1norm = Z.sum(axis=1)
+    weights = 1 / (scipy.special.comb(num_features, Z_1norm) * (num_features - Z_1norm) * Z_1norm)
+    b = vz.T @ (Z * weights[:, np.newaxis])
+    correction = b.sum() - (v1 - v0) / num_features
+    phi = num_features * b - correction
+    return phi
+
 
 estimators = {
     'Permuation SHAP': permutation_shap,
@@ -377,6 +402,7 @@ estimators = {
     'Embedded Lattice' : embedded_lattice,
     'My Kernel SHAP Original' : kernel_shap_mine,
     'My Kernel SHAP Leverage' : kernel_shap_mine_leverage,
+    'Refined Kernel SHAP' : kernel_refined
 }
 
 #for offset in [0,10,20,30,40,50,60,70,80,90,100]:
