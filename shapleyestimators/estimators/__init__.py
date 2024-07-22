@@ -316,7 +316,7 @@ def uniform_sampling_adjusted2(baseline, explicand, model, num_samples):
         phi[0,i] = np.mean(with_vals - without_vals - adjustment_with_centered + adjustment_without_centered)
     return phi
 
-def kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=True):
+def weighted_regression(baseline, explicand, model, num_samples, original_weight=True):
     eval_model = lambda X : model.predict(X)
     num_features = baseline.shape[1]
     gen = np.random.Generator(np.random.PCG64()) 
@@ -351,8 +351,8 @@ def kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=Tr
     phi = np.linalg.solve(A, b) 
     return phi[:-1]
 
-def kernel_shap_mine_leverage(baseline, explicand, model, num_samples):
-    return kernel_shap_mine(baseline, explicand, model, num_samples, original_weight=False)
+def weighted_regression_leverage(baseline, explicand, model, num_samples):
+    return weighted_regression(baseline, explicand, model, num_samples, original_weight=False)
 
 def kernel_refined(baseline, explicand, model, num_samples):
     eval_model = lambda X : model.predict(X)
@@ -381,6 +381,29 @@ def kernel_refined(baseline, explicand, model, num_samples):
     phi = num_features * b - correction
     return phi
 
+def kernel_shap_base(baseline, explicand, model, num_samples):
+    # https://github.com/iancovert/shapley-regression/blob/master/shapreg/shapley.py
+    eval_model = lambda X : model.predict(X)
+    num_features = baseline.shape[1]
+    gen = np.random.Generator(np.random.PCG64())
+    Z = np.zeros((num_samples, num_features))
+    v0 = eval_model(baseline)
+    v1 = eval_model(explicand)
+    for idx in range(num_samples):
+        z = gen.choice(num_features, num_features // 2, replace=False)
+        Z[idx, z] = 1
+    inputs = baseline * (1 - Z) + explicand * Z
+    vz = eval_model(inputs) - v0
+    Z_1norm = Z.sum(axis=1)
+    weights = 1 / (scipy.special.comb(num_features, Z_1norm) * (num_features - Z_1norm) * Z_1norm)
+    b_hat = vz.T @ (Z)# * weights[:, np.newaxis])
+    A_hat = Z.T @ (Z )#* weights[:, np.newaxis])
+    ones = np.ones((num_features, 1))
+    A_hat_inv = np.linalg.pinv(A_hat)
+    scalar = (ones.T @ A_hat_inv @ b_hat - (v1 - v0)) / (ones.T @ A_hat_inv @ ones)
+    phi = A_hat_inv @ (b_hat - scalar * ones)
+    return phi
+
 
 estimators = {
     'Permuation SHAP': permutation_shap,
@@ -398,11 +421,12 @@ estimators = {
 #    'Uniform Sampling Clever' : uniform_sampling_clever,
     'Uniform Sampling Sum' : uniform_sampling_sum,
     'Permutation Recycling' : permutation_recycling,
-    'Complementary Contribution' : complementary_contribution, # Slow
-    'Embedded Lattice' : embedded_lattice,
-    'My Kernel SHAP Original' : kernel_shap_mine,
-    'My Kernel SHAP Leverage' : kernel_shap_mine_leverage,
-    'Refined Kernel SHAP' : kernel_refined
+#    'Complementary Contribution' : complementary_contribution, # Slow
+#    'Embedded Lattice' : embedded_lattice,
+    'Weighted Regression Weighted Samples' : weighted_regression,
+    'Weighted Regression Leverage Samples' : weighted_regression_leverage,
+    'Refined Kernel SHAP' : kernel_refined,
+    'Kernel SHAP Base' : kernel_shap_base
 }
 
 #for offset in [0,10,20,30,40,50,60,70,80,90,100]:

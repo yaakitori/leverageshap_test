@@ -6,6 +6,8 @@ import os
 from tqdm import tqdm
 
 dataset_loaders = {
+    'Adult' : shap.datasets.adult,
+    'California' : shap.datasets.california,
     'Communities' : shap.datasets.communitiesandcrime,
 }
 
@@ -53,6 +55,11 @@ def benchmark(num_runs, dataset, estimators, sample_sizes = [1000], silent=False
                 if len(saved[estimator_name][sample_size]) >= num_runs:
                     continue
                 shap_values = estimator(baseline, explicand, model, sample_size)
+                if False:
+                    print(estimator_name)
+                    print('shap values', shap_values)
+                    print('true shap values', true_shap_values)
+                    print('explicand - baseline', (explicand - baseline).round(2))
                 error = ((shap_values - true_shap_values) ** 2).mean()
                 filename = f'output/{dataset}_{estimator_name}.csv'
                 with open(filename, 'a') as f:
