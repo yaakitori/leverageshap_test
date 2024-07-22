@@ -42,14 +42,14 @@ def benchmark(num_runs, dataset, estimators, sample_sizes = [1000], silent=False
     for run_idx in tqdm(range(num_runs), disable=silent):
         for sample_size in sample_sizes:            
             # Randomly choose a baseline and explicand
-            #np.random.seed(run_idx * num_runs + sample_size)
+            np.random.seed(run_idx * num_runs + sample_size)
             baseline_idx = np.random.choice(X.shape[0])
             explicand_idx = np.random.choice(X.shape[0])
             baseline = X.iloc[baseline_idx].values.reshape(1, -1)
             explicand = X.iloc[explicand_idx].values.reshape(1, -1)
 
             # Compute the true SHAP values (assuming tree model)
-            true_shap_values = estimators['Tree SHAP'](baseline, explicand, model, sample_size)
+            true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, sample_size)
 
             for estimator_name, estimator in estimators.items():
                 if len(saved[estimator_name][sample_size]) >= num_runs:

@@ -1,9 +1,6 @@
 import scipy.special
-from .kernel import kernel_shap
-from .sampling import shapley_sampling
-from .tree import tree_shap
-from .permutation import permutation_shap
-from .complementary import complementary_contribution
+from .official_shap import official_kernel_shap, official_permutation_shap, official_shapley_sampling, official_tree_shap
+from .regression import weighted_regression2, kernel_shap2
 
 import numpy as np
 import xgboost as xgb
@@ -359,7 +356,7 @@ def kernel_refined(baseline, explicand, model, num_samples):
     num_features = baseline.shape[1]
     gen = np.random.Generator(np.random.PCG64())
 
-    all_s = np.array(list(range(1, num_features-1)))
+    all_s = np.array(list(range(1, num_features)))
     prob_s = 1 / ((num_features - all_s) * all_s)
     # Normalize
     prob_s = prob_s / prob_s.sum()
@@ -376,7 +373,7 @@ def kernel_refined(baseline, explicand, model, num_samples):
     vz = eval_model(inputs) - v0
     Z_1norm = Z.sum(axis=1)
     weights = 1 / (scipy.special.comb(num_features, Z_1norm) * (num_features - Z_1norm) * Z_1norm)
-    b = vz.T @ (Z * weights[:, np.newaxis])
+    b = vz.T @ (Z)# * weights[:, np.newaxis])
     correction = b.sum() - (v1 - v0) / num_features
     phi = num_features * b - correction
     return phi
@@ -396,38 +393,28 @@ def kernel_shap_base(baseline, explicand, model, num_samples):
     vz = eval_model(inputs) - v0
     Z_1norm = Z.sum(axis=1)
     weights = 1 / (scipy.special.comb(num_features, Z_1norm) * (num_features - Z_1norm) * Z_1norm)
-    b_hat = vz.T @ (Z)# * weights[:, np.newaxis])
-    A_hat = Z.T @ (Z )#* weights[:, np.newaxis])
-    ones = np.ones((num_features, 1))
-    A_hat_inv = np.linalg.pinv(A_hat)
-    scalar = (ones.T @ A_hat_inv @ b_hat - (v1 - v0)) / (ones.T @ A_hat_inv @ ones)
-    phi = A_hat_inv @ (b_hat - scalar * ones)
+    b_hat = vz.T @ (Z * weights[:, np.newaxis])
+    A_hat = Z.T @ (Z * weights[:, np.newaxis])
+    A_hat_inv_one = np.linalg.solve(A_hat, np.ones((num_features, 1)))
+    A_hat_inv_b_hat = np.linalg.solve(A_hat, b_hat)
+
+    phi = (
+        A_hat_inv_b_hat -
+        A_hat_inv_one * (
+            np.sum(A_hat_inv_b_hat) - (v1 - v0) 
+        ) / np.sum(A_hat_inv_one)
+    )
+
     return phi
 
 
 estimators = {
-    'Permuation SHAP': permutation_shap,
-    'Kernel SHAP': kernel_shap,
-    'Sampling SHAP': shapley_sampling,
-    'Tree SHAP': tree_shap,
-    # Same samples of v(S) for all features
-    'Recycled Sampling' : recycled_sampling,
-    # Different samples of v(i|S) for each feature
-    'Uniform Sampling' : uniform_sampling,
-    # Adjust with prediction for v(i|S)
-    'Uniform Sampling Adjusted' : uniform_sampling_adjusted,
-    # Adjust with prediction for v(S cup i) and v(S)
-    'Uniform Sampling Adjusted 2x' : uniform_sampling_adjusted2,
-#    'Uniform Sampling Clever' : uniform_sampling_clever,
-    'Uniform Sampling Sum' : uniform_sampling_sum,
-    'Permutation Recycling' : permutation_recycling,
-#    'Complementary Contribution' : complementary_contribution, # Slow
-#    'Embedded Lattice' : embedded_lattice,
+    'Official Kernel SHAP': official_kernel_shap,
+    'Official Tree SHAP': official_tree_shap,
     'Weighted Regression Weighted Samples' : weighted_regression,
     'Weighted Regression Leverage Samples' : weighted_regression_leverage,
-    'Refined Kernel SHAP' : kernel_refined,
-    'Kernel SHAP Base' : kernel_shap_base
+    #'Refined Kernel SHAP' : kernel_refined,
+    'Kernel SHAP Base' : kernel_shap_base,
+    'Kernel SHAP 2' : kernel_shap2,
+    'Weighted 2' : weighted_regression2,
 }
-
-#for offset in [0,10,20,30,40,50,60,70,80,90,100]:
-#    estimators[f'Uniform Sampling Offset {offset}'] = lambda baseline, explicand, model, num_samples, offset=offset : uniform_sampling_offset(baseline, explicand, model, num_samples, offset=offset)
