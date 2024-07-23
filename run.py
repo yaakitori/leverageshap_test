@@ -2,18 +2,18 @@ import shapleyestimators as se
 
 num_runs = 10
 dataset = 'Communities'
-sample_sizes = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
-sample_sizes = [int(s) for s in sample_sizes]
 
-#for dataset in ['Adult', 'California', 'Communities']:
-results = se.benchmark(num_runs, dataset, se.estimators, sample_sizes)
+small_n = ['Adult', 'California', 'Diabetes', 'IRIS']
 
-image_filename = f'images/{dataset}.pdf'
+big_n = ['Communities', 'Correlated', 'Independent', 'NHANES']
 
-exclude= ['Tree SHAP', 'Recycled Sampling', 'Uniform Sampling Adjusted', 'Uniform Sampling Adjusted 2x', 'Uniform Sampling Sum']
+for dataset in small_n: # + big_n:
+    print(dataset)
+    n = se.get_dataset_size(dataset)
+    sample_sizes = [int(n * i) for i in [5, 10, 20, 40, 80, 160]]
+    weighted_error = 2**n <= 1e7
+    results = se.benchmark(num_runs, dataset, se.estimators, sample_sizes, weighted_error=weighted_error)
 
-for name in se.estimators:
-    if 'Offset' in name:
-        exclude.append(name)
+    image_filename = f'images/{dataset}.pdf'
 
-se.plot_data(results, dataset, image_filename, exclude=exclude)
+    se.plot_data(results, dataset, image_filename, weighted_error=weighted_error)
