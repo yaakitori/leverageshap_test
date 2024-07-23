@@ -2,7 +2,7 @@ import shapleyestimators as se
 
 num_runs = 10
 dataset = 'Communities'
-sample_sizes = [1e3, 1e3, .5 * 1e4, 1e4]#, .5 * 1e5]
+sample_sizes = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
 sample_sizes = [int(s) for s in sample_sizes]
 
 #for dataset in ['Adult', 'California', 'Communities']:

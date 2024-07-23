@@ -1,6 +1,6 @@
 import scipy.special
-from .official_shap import official_kernel_shap, official_permutation_shap, official_shapley_sampling, official_tree_shap
-from .regression import weighted_regression2, kernel_shap2
+from .official_shap import *
+from .regression import *
 
 import numpy as np
 import xgboost as xgb
@@ -331,7 +331,7 @@ def weighted_regression(baseline, explicand, model, num_samples, original_weight
         z = gen.choice(num_features, s, replace=False)
         X[idx, z] = 1
     diag_weights = 1 / (scipy.special.comb(num_features, sampled_s) * (num_features - sampled_s) * sampled_s)
-    diag_weights = np.ones_like(diag_weights)
+    #diag_weights = np.ones_like(diag_weights)
     W = np.diag(diag_weights)
     baseline_tiled = np.tile(baseline, (num_samples-2, 1))
     explicand_tiled = np.tile(explicand, (num_samples-2, 1))
@@ -383,10 +383,11 @@ def kernel_shap_base(baseline, explicand, model, num_samples):
     eval_model = lambda X : model.predict(X)
     num_features = baseline.shape[1]
     gen = np.random.Generator(np.random.PCG64())
-    Z = np.zeros((num_samples, num_features))
+    Z = np.zeros((num_samples-2, num_features))
     v0 = eval_model(baseline)
     v1 = eval_model(explicand)
-    for idx in range(num_samples):
+
+    for idx in range(num_samples-2):
         z = gen.choice(num_features, num_features // 2, replace=False)
         Z[idx, z] = 1
     inputs = baseline * (1 - Z) + explicand * Z
@@ -411,10 +412,16 @@ def kernel_shap_base(baseline, explicand, model, num_samples):
 estimators = {
     'Official Kernel SHAP': official_kernel_shap,
     'Official Tree SHAP': official_tree_shap,
-    'Weighted Regression Weighted Samples' : weighted_regression,
-    'Weighted Regression Leverage Samples' : weighted_regression_leverage,
+    'Kernel SHAP': kernel_shap,
+    'Kernel SHAP Leverage' : kernel_shap_leverage,
+    'Weighted Regression': weighted_regression,
+    'Weighted Regression Leverage': weighted_regression_leverage,
+    'Exact Regression': exact_regression,
+    'Exact Regression Leverage': exact_regression_leverage,
+    #'Weighted Regression Weighted Samples' : weighted_regression,
+    #'Weighted Regression Leverage Samples' : weighted_regression_leverage,
     #'Refined Kernel SHAP' : kernel_refined,
-    'Kernel SHAP Base' : kernel_shap_base,
-    'Kernel SHAP 2' : kernel_shap2,
-    'Weighted 2' : weighted_regression2,
+    #'Kernel SHAP Base' : kernel_shap_base,
+    #'Kernel SHAP 2' : kernel_shap2,
+    #'Weighted 2' : weighted_regression2,
 }
