@@ -11,6 +11,8 @@ estimators = {
     'Official Tree SHAP': official_tree_shap,
     'Kernel SHAP': kernel_shap,
     'Kernel SHAP Leverage' : kernel_shap_leverage,
-    'Weighted Regression': weighted_regression,
-    'Weighted Regression Leverage': weighted_regression_leverage,
+    'Kernel SHAP Unpaired': kernel_shap_unpaired,
+    'Kernel SHAP Leverage Unpaired': kernel_shap_leverage_unpaired,
+    #'Weighted Regression': weighted_regression,
+    #'Weighted Regression Leverage': weighted_regression_leverage,
 }

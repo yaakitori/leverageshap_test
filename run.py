@@ -3,11 +3,11 @@ import shapleyestimators as se
 num_runs = 10
 dataset = 'Communities'
 
-small_n = ['Adult', 'California', 'Diabetes', 'IRIS']
+small_n = ['Adult', 'California', 'Diabetes']
 
 big_n = ['Communities', 'Correlated', 'Independent', 'NHANES']
 
-for dataset in small_n: # + big_n:
+for dataset in small_n + big_n:
     print(dataset)
     n = se.get_dataset_size(dataset)
     sample_sizes = [int(n * i) for i in [5, 10, 20, 40, 80, 160]]

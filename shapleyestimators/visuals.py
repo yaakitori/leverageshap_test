@@ -15,10 +15,10 @@ def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False)
     # Put legend outside of plot
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     plt.title(f'{dataset} Benchmark n = {results["n"]}')
-    plt.yscale('log')
-    plt.xscale('log')
+    plt.xscale('log')   
     if not weighted_error:
         plt.ylabel('Shapley 2-norm Error')
+        plt.yscale('log')
     else:
         plt.ylabel('Weighted Error')
     plt.xlabel('Sample Size')

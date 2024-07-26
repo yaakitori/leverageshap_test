@@ -6,7 +6,7 @@ import itertools
 # Compute A
 # Compute v1-v0
 
-def get_components(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=False, weighted_problem=True):
+def get_components(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=False, weighted_problem=True, use_determinisitic=False):
     num_samples -= 2 # Subtract 2 for the baseline and explicand
     num_samples = int((num_samples) // 2) * 2 # Make sure num_samples is even
     eval_model = lambda z : model.predict(explicand * z + baseline * (1 - z))
@@ -25,12 +25,13 @@ def get_components(baseline, explicand, model, num_samples, paired_sampling=Fals
     Z = np.zeros((num_samples, num_features))
     
     offset = 0
-    for size in range(1, num_features):
-        if (num_samples) // (num_features -1) >= scipy.special.binom(num_features, size):
-            for indices in itertools.combinations(range(num_features), size):
-                Z[offset, list(indices)] = 1
-                offset += 1
-            prob_s[size-1] = 0
+    if use_determinisitic:
+        for size in range(1, num_features):
+            if (num_samples) // (num_features -1) >= scipy.special.binom(num_features, size):
+                for indices in itertools.combinations(range(num_features), size):
+                    Z[offset, list(indices)] = 1
+                    offset += 1
+                prob_s[size-1] = 0
 
     if np.sum(prob_s) != 0:
         prob_s = prob_s / np.sum(prob_s)
@@ -43,7 +44,7 @@ def get_components(baseline, explicand, model, num_samples, paired_sampling=Fals
                 indices_complement = np.array([i for i in range(num_features) if i not in indices])
                 Z[offset + 2*idx, indices_complement] = 1
                 Z[offset + 2*idx+1, indices] = 1
-                # Break half we through if paired sampling
+                # Break half way through if paired sampling
                 if idx >= (num_samples - 2 - offset) // 2 -1: break
     Z1_norm = np.sum(Z, axis=1)
 
@@ -51,7 +52,10 @@ def get_components(baseline, explicand, model, num_samples, paired_sampling=Fals
     Z = Z[Z1_norm != 0]
     Z1_norm = Z1_norm[Z1_norm != 0]    
 
-    inv_weights = Z1_norm * (num_features - Z1_norm) * scipy.special.binom(num_features, Z1_norm)
+    if leverage_sampling:
+        inv_weights = Z1_norm * (num_features - Z1_norm)
+    else:
+        inv_weights = Z1_norm * (num_features - Z1_norm) * scipy.special.binom(num_features, Z1_norm)
     weights = 1 / inv_weights if weighted_problem else np.ones_like(inv_weights)
 
     inputs = baseline * (1 - Z) + explicand * Z
@@ -86,6 +90,12 @@ def kernel_shap(baseline, explicand, model, num_samples, paired_sampling=True, l
 
 def kernel_shap_leverage(baseline, explicand, model, num_samples, paired_sampling=True, weighted_problem=True):
     return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=True, weighted_problem=weighted_problem)
+
+def kernel_shap_unpaired(baseline, explicand, model, num_samples, weighted_problem=True):
+    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=False, weighted_problem=weighted_problem)
+
+def kernel_shap_leverage_unpaired(baseline, explicand, model, num_samples, weighted_problem=True):
+    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=True, weighted_problem=weighted_problem)
 
 
 def weighted_regression(baseline, explicand, model, num_samples, paired_sampling=True, leverage_sampling=False, weighted_problem=True):

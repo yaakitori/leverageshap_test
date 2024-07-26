@@ -83,6 +83,8 @@ def benchmark(num_runs, dataset, estimators, sample_sizes = [1000], silent=False
 
             # Compute the true SHAP values (assuming tree model)
             true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, sample_size)
+            if weighted_error:
+                best_weighted_error = compute_weighted_error(baseline, explicand, model, true_shap_values)
 
             for estimator_name, estimator in estimators.items():
                 if len(saved[estimator_name][sample_size]) >= num_runs:
@@ -104,7 +106,7 @@ def benchmark(num_runs, dataset, estimators, sample_sizes = [1000], silent=False
                     dict = {'sample_size': sample_size}
                     dict['shap_error'] = ((shap_values - true_shap_values) ** 2).mean()
                     if weighted_error:
-                        dict['weighted_error'] = compute_weighted_error(baseline, explicand, model, shap_values)
+                        dict['weighted_error'] = compute_weighted_error(baseline, explicand, model, shap_values) / best_weighted_error
                     f.write(str(dict) + '\n')
     
     saved = {'n': X.shape[1]}
