@@ -7,12 +7,10 @@ import xgboost as xgb
 import scipy
 
 estimators = {
-    'Official Kernel SHAP': official_kernel_shap,
+    'KernelSHAP': kernel_shap_unpaired,
+    'KernelSHAP Paired': kernel_shap,
+    'Official KernelSHAP': official_kernel_shap,
+    'LeverageSHAP': kernel_shap_leverage_unpaired,
+    'LeverageSHAP Paired' : kernel_shap_leverage,
     'Official Tree SHAP': official_tree_shap,
-    'Kernel SHAP': kernel_shap,
-    'Kernel SHAP Leverage' : kernel_shap_leverage,
-    'Kernel SHAP Unpaired': kernel_shap_unpaired,
-    'Kernel SHAP Leverage Unpaired': kernel_shap_leverage_unpaired,
-    #'Weighted Regression': weighted_regression,
-    #'Weighted Regression Leverage': weighted_regression_leverage,
 }

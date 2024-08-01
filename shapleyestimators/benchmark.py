@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from .estimators import *
 import numpy as np
 import xgboost as xgb
@@ -50,13 +51,54 @@ def compute_weighted_error(baseline, explicand, model, shap_values):
     v0 = model.predict(baseline)
     return np.sum(weights * (shap_values @ Z.T - (vz - v0)) ** 2)
 
+def load_input(X, seed=None):
+    if seed is not None:
+        np.random.seed(seed)
+    baseline = X.mean().values.reshape(1, -1)
+    explicand_idx = np.random.choice(X.shape[0])
+    explicand = X.iloc[explicand_idx].values.reshape(1, -1)
+    for i in range(explicand.shape[1]):
+        while baseline[0, i] == explicand[0, i]:
+            explicand_idx = np.random.choice(X.shape[0])
+            explicand[0,i] = X.iloc[explicand_idx, i]
+    return baseline, explicand
 
-def benchmark(num_runs, dataset, estimators, sample_sizes = [1000], silent=False, weighted_error=False):
+def visualize_predictions(dataset, folder=''):
+    X, y = dataset_loaders[dataset]()
+    n = X.shape[1]
+    num_samples = 5 * n
+    model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
+    model.fit(X, y)
+    baseline, explicand = load_input(X)
+    # 2 by 3 array of axes in matplotlib plot
+    fig, axs = plt.subplots(2, 3, figsize=(10, 7))
+    true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, num_samples).flatten()
+    for i, (estimator_name, estimator) in enumerate(estimators.items()):     
+        shap_values = estimator(baseline, explicand, model, num_samples).flatten()
+        m, b = np.polyfit(true_shap_values, shap_values, 1)
+        ax = axs[i // 3, i % 3]
+        ax.plot(true_shap_values, m * true_shap_values + b, color='green', linestyle='dashed', linewidth=1, alpha=0.5)
+        ax.scatter(true_shap_values, shap_values, alpha=0.5, marker='.')
+        ax.set_title(estimator_name)
+    
+    # Set title for whole plot
+    fig.suptitle(f'{dataset} Dataset')
+    # Set x label for bottom row
+    for ax in axs[1]:
+        ax.set_xlabel('True SHAP Values')
+    # Set y label for left column
+    for ax in axs[:,0]:
+        ax.set_ylabel('Predicted SHAP Values')     
+
+    filename = f'{folder}/{dataset}_detailed.pdf'
+    plt.savefig(filename, bbox_inches='tight', dpi=300)
+    plt.clf()
+
+def benchmark(num_runs, dataset, estimators, sample_sizes = None, silent=False, weighted_error=False):
     X, y = dataset_loaders[dataset]()
     # Assuming deterministic
     model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
     model.fit(X, y)
-    n = X.shape[1]
     error_name = 'weighted_error' if weighted_error else 'shap_error'
 
     saved = {}
@@ -70,16 +112,7 @@ def benchmark(num_runs, dataset, estimators, sample_sizes = [1000], silent=False
         for sample_size in sample_sizes:            
             # Randomly choose a baseline and explicand
             # Choose baseline and explicand so no variables are the same
-            np.random.seed(run_idx * num_runs)
-            # Average x value
-            baseline = X.mean().values.reshape(1, -1)
-            explicand_idx = np.random.choice(X.shape[0])
-            explicand = X.iloc[explicand_idx].values.reshape(1, -1)
-            for i in range(explicand.shape[1]):
-                # Ensure that all variables are different
-                while baseline[0, i] == explicand[0, i]:
-                    explicand_idx = np.random.choice(X.shape[0])
-                    explicand[0,i] = X.iloc[explicand_idx, i]            
+            baseline, explicand = load_input(X, seed=run_idx * num_runs)
 
             # Compute the true SHAP values (assuming tree model)
             true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, sample_size)
