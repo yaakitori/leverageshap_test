@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.special
 
 def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False):
     plt.clf()
@@ -30,3 +31,40 @@ def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False)
     else:
         plt.show()
     plt.close()
+
+def plot_weights(n, folder=None):
+    s = np.arange(1, n)
+    kernel_weight = 1 / (scipy.special.comb(n, s) * s * (n - s))
+    kernel_prob = kernel_weight / np.sum(kernel_weight)
+    leverage_weight = 1 / scipy.special.comb(n, s)
+    leverage_prob = leverage_weight / np.sum(leverage_weight)    
+    plt.plot(s, kernel_prob, label='KernelSHAP', color='b')
+    plt.plot(s, leverage_prob, label='LeverageSHAP', linestyle='--', color='g')
+    plt.legend()
+    plt.title('Kernel and Leverage Probability Distributions')
+    plt.xlabel('Subset Size')
+    plt.yscale('log')
+    plt.ylabel('Probability')
+    filename = f'{folder}sampling_prob_{n}.pdf'
+    plt.savefig(filename, dpi=1000, bbox_inches='tight')
+    plt.close()
+
+def plot_sampled_sizes(n, m, folder=None):
+    s = np.arange(1, n)
+    kernel_weight = 1 / (scipy.special.comb(n, s) * s * (n - s))
+    kernel_prob = kernel_weight / np.sum(kernel_weight)
+    kernel_sampled = np.random.choice(s, m, p=kernel_prob)
+    leverage_weight = 1 / scipy.special.comb(n, s)
+    leverage_prob = leverage_weight / np.sum(leverage_weight)
+    leverage_sampled = np.random.choice(s, m, p=leverage_prob)
+
+    plt.hist(kernel_sampled, alpha=0.5, label='KernelSHAP', color='b')
+    plt.hist(leverage_sampled, alpha=0.5, label='LeverageSHAP', color='g')
+    plt.legend()
+    plt.title('Sampled Subset Sizes')
+    plt.xlabel('Subset Size')
+    plt.ylabel('Frequency')
+    filename = f'{folder}sampled_sizes_{n}_{m}.pdf'
+    plt.savefig(filename, dpi=1000, bbox_inches='tight')
+    plt.close()
+

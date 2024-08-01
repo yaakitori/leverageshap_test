@@ -7,10 +7,15 @@ small_n = ['Adult', 'California', 'Diabetes']
 
 big_n = ['Communities', 'Correlated', 'Independent', 'NHANES']
 
-for dataset in small_n + big_n:
+m = 10000
+for n in [10, 100, 1000]:
+    se.plot_weights(n, folder='images/')
+    se.plot_sampled_sizes(n, m, folder='images/')
+
+for dataset in []:#small_n + big_n:
     se.visualize_predictions(dataset, folder='images/')
 
-for dataset in small_n + big_n:
+for dataset in []:#small_n + big_n:
     print(dataset)
     n = se.get_dataset_size(dataset)
     sample_sizes = [int(n * i) for i in [5, 10, 20, 40, 80, 160]]
