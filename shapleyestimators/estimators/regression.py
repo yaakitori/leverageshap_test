@@ -52,11 +52,8 @@ def get_components(baseline, explicand, model, num_samples, paired_sampling=Fals
     Z = Z[Z1_norm != 0]
     Z1_norm = Z1_norm[Z1_norm != 0]    
 
-    if leverage_sampling:
-        inv_weights = Z1_norm * (num_features - Z1_norm)
-    else:
-        inv_weights = Z1_norm * (num_features - Z1_norm) * scipy.special.binom(num_features, Z1_norm)
-    weights = 1 / inv_weights if weighted_problem else np.ones_like(inv_weights)
+    lev_inv_weights = Z1_norm * (num_features - Z1_norm)
+    weights = 1 / lev_inv_weights if leverage_sampling else np.ones_like(lev_inv_weights)
 
     inputs = baseline * (1 - Z) + explicand * Z
     vz = model.predict(inputs)

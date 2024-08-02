@@ -34,9 +34,24 @@ def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False)
 
 def plot_weights(n, folder=None):
     s = np.arange(1, n)
-    kernel_weight = 1 / (scipy.special.comb(n, s) * s * (n - s))
+    leverage_weight = 1 / (s * (n - s))
+    kernel_weight = 1 / (scipy.special.binom(n, s) * s * (n - s))
+    plt.plot(s, kernel_weight, label='KernelSHAP', color='b')
+    plt.plot(s, leverage_weight, label='LeverageSHAP', linestyle='--', color='g')
+    plt.legend()
+    plt.title('Kernel and Leverage Weights')
+    plt.xlabel('Subset Size')
+    plt.yscale('log')
+    plt.ylabel('Weights')
+    filename = f'{folder}weights_{n}.pdf'
+    plt.savefig(filename, dpi=1000, bbox_inches='tight')
+    plt.close()
+
+def plot_probs(n, folder=None):
+    s = np.arange(1, n)
+    kernel_weight = 1 / (s * (n - s))
     kernel_prob = kernel_weight / np.sum(kernel_weight)
-    leverage_weight = 1 / scipy.special.comb(n, s)
+    leverage_weight = np.ones_like(s)
     leverage_prob = leverage_weight / np.sum(leverage_weight)    
     plt.plot(s, kernel_prob, label='KernelSHAP', color='b')
     plt.plot(s, leverage_prob, label='LeverageSHAP', linestyle='--', color='g')
@@ -51,10 +66,10 @@ def plot_weights(n, folder=None):
 
 def plot_sampled_sizes(n, m, folder=None):
     s = np.arange(1, n)
-    kernel_weight = 1 / (scipy.special.comb(n, s) * s * (n - s))
+    kernel_weight = 1 / (s * (n - s))
     kernel_prob = kernel_weight / np.sum(kernel_weight)
     kernel_sampled = np.random.choice(s, m, p=kernel_prob)
-    leverage_weight = 1 / scipy.special.comb(n, s)
+    leverage_weight = np.ones_like(s)
     leverage_prob = leverage_weight / np.sum(leverage_weight)
     leverage_sampled = np.random.choice(s, m, p=leverage_prob)
 
