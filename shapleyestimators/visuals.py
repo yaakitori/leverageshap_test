@@ -32,21 +32,6 @@ def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False)
         plt.show()
     plt.close()
 
-def plot_weights(n, folder=None):
-    s = np.arange(1, n)
-    leverage_weight = 1 / (s * (n - s))
-    kernel_weight = 1 / (scipy.special.binom(n, s) * s * (n - s))
-    plt.plot(s, kernel_weight, label='KernelSHAP', color='b')
-    plt.plot(s, leverage_weight, label='LeverageSHAP', linestyle='--', color='g')
-    plt.legend()
-    plt.title('Kernel and Leverage Weights')
-    plt.xlabel('Subset Size')
-    plt.yscale('log')
-    plt.ylabel('Weights')
-    filename = f'{folder}weights_{n}.pdf'
-    plt.savefig(filename, dpi=1000, bbox_inches='tight')
-    plt.close()
-
 def plot_probs(n, folder=None):
     s = np.arange(1, n)
     kernel_weight = 1 / (s * (n - s))

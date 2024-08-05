@@ -9,7 +9,6 @@ big_n = ['Communities', 'Correlated', 'Independent', 'NHANES']
 
 m = 10000
 for n in [10, 100, 1000]:
-    se.plot_weights(n, folder='images/')
     se.plot_probs(n, folder='images/')
     se.plot_sampled_sizes(n, m, folder='images/')
 
