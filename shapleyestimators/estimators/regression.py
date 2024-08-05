@@ -6,7 +6,7 @@ import itertools
 # Compute A
 # Compute v1-v0
 
-def get_components(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=False, weighted_problem=True, use_determinisitic=False):
+def get_components(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=False, use_determinisitic=False):
     num_samples -= 2 # Subtract 2 for the baseline and explicand
     num_samples = int((num_samples) // 2) * 2 # Make sure num_samples is even
     eval_model = lambda z : model.predict(explicand * z + baseline * (1 - z))
@@ -54,6 +54,9 @@ def get_components(baseline, explicand, model, num_samples, paired_sampling=Fals
 
     lev_inv_weights = Z1_norm * (num_features - Z1_norm)
     weights = 1 / lev_inv_weights if leverage_sampling else np.ones_like(lev_inv_weights)
+    # If deterministically sampled, set weights to w(s)
+    s = Z1_norm[:offset]
+    weights[:offset] = 1 / (s * (num_features - s) * scipy.special.binom(num_features, s))
 
     inputs = baseline * (1 - Z) + explicand * Z
     vz = model.predict(inputs)
@@ -70,8 +73,8 @@ def get_components(baseline, explicand, model, num_samples, paired_sampling=Fals
         'delta': v1 - v0,
     }
 
-def kernel_shap(baseline, explicand, model, num_samples, paired_sampling=True, leverage_sampling=False, weighted_problem=True):
-    components = get_components(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=leverage_sampling, weighted_problem=weighted_problem)
+def kernel_shap(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=False, use_determinisitic=False):
+    components = get_components(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=leverage_sampling, use_determinisitic=use_determinisitic)
     A_hat = components['A_hat']
     b_hat = components['b_hat']
     delta = components['delta']
@@ -85,18 +88,23 @@ def kernel_shap(baseline, explicand, model, num_samples, paired_sampling=True, l
         ) / np.sum(A_hat_inv_ones)
     )
 
-def kernel_shap_leverage(baseline, explicand, model, num_samples, paired_sampling=True, weighted_problem=True):
-    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=True, weighted_problem=weighted_problem)
+def kernel_shap_paired(baseline, explicand, model, num_samples):
+    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=True, leverage_sampling=False)
 
-def kernel_shap_unpaired(baseline, explicand, model, num_samples, weighted_problem=True):
-    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=False, weighted_problem=weighted_problem)
+def kernel_shap_optimized(baseline, explicand, model, num_samples):
+    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=True, leverage_sampling=False, use_determinisitic=True)
 
-def kernel_shap_leverage_unpaired(baseline, explicand, model, num_samples, weighted_problem=True):
-    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=True, weighted_problem=weighted_problem)
+def kernel_shap_leverage(baseline, explicand, model, num_samples, paired_sampling=False):
+    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=True)
 
+def kernel_shap_leverage_paired(baseline, explicand, model, num_samples):
+    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=True, leverage_sampling=True)
 
-def weighted_regression(baseline, explicand, model, num_samples, paired_sampling=True, leverage_sampling=False, weighted_problem=True):
-    components = get_components(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=leverage_sampling, weighted_problem=weighted_problem)
+def kernel_shap_leverage_optimized(baseline, explicand, model, num_samples):
+    return kernel_shap(baseline, explicand, model, num_samples, paired_sampling=True, leverage_sampling=True, use_determinisitic=True)
+
+def weighted_regression(baseline, explicand, model, num_samples, paired_sampling=True, leverage_sampling=False):
+    components = get_components(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=leverage_sampling)
     A_hat = components['A_hat']
     b_hat = components['b_hat']
     delta = components['delta']
@@ -109,5 +117,5 @@ def weighted_regression(baseline, explicand, model, num_samples, paired_sampling
     vector = np.concatenate([b_hat, delta])
     return np.linalg.solve(matrix, vector)[:-1]
 
-def weighted_regression_leverage(baseline, explicand, model, num_samples, paired_sampling=True, weighted_problem=True):
-    return weighted_regression(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=True, weighted_problem=weighted_problem)
+def weighted_regression_leverage(baseline, explicand, model, num_samples, paired_sampling=True):
+    return weighted_regression(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=True)

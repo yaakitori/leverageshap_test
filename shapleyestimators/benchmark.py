@@ -63,7 +63,7 @@ def load_input(X, seed=None):
             explicand[0,i] = X.iloc[explicand_idx, i]
     return baseline, explicand
 
-def visualize_predictions(dataset, folder=''):
+def visualize_predictions(dataset, folder='', exclude=[]):
     X, y = dataset_loaders[dataset]()
     n = X.shape[1]
     num_samples = 5 * n
@@ -73,13 +73,17 @@ def visualize_predictions(dataset, folder=''):
     # 2 by 3 array of axes in matplotlib plot
     fig, axs = plt.subplots(2, 3, figsize=(10, 7))
     true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, num_samples).flatten()
-    for i, (estimator_name, estimator) in enumerate(estimators.items()):     
+    i = 0
+    for estimator_name, estimator in estimators.items():
+        if estimator_name in exclude:
+            continue
         shap_values = estimator(baseline, explicand, model, num_samples).flatten()
         m, b = np.polyfit(true_shap_values, shap_values, 1)
         ax = axs[i // 3, i % 3]
         ax.plot(true_shap_values, m * true_shap_values + b, color='green', linestyle='dashed', linewidth=1, alpha=0.5)
         ax.scatter(true_shap_values, shap_values, alpha=0.5, marker='.')
         ax.set_title(estimator_name)
+        i += 1
     
     # Set title for whole plot
     fig.suptitle(f'{dataset} Dataset')
