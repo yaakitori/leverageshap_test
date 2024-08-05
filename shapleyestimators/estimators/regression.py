@@ -15,12 +15,13 @@ def get_components(baseline, explicand, model, num_samples, paired_sampling=Fals
     v0 = eval_model(np.zeros(num_features))
     v1 = eval_model(np.ones(num_features))
     
+    # Real weights
+    compute_weights = lambda s: 1 / (s * (num_features - s))
     # Select weights to sample each size
+    distribution = lambda s: 1 / (s * (num_features - s)) if not leverage_sampling else np.ones_like(s)
+
     valid_sizes = np.array(list(range(1, num_features)))
-    if leverage_sampling:
-        prob_s = np.ones(num_features-1)
-    else:        
-        prob_s = 1 / (valid_sizes * (num_features - valid_sizes))
+    prob_s = distribution(valid_sizes)
 
     Z = np.zeros((num_samples, num_features))
     
@@ -50,42 +51,42 @@ def get_components(baseline, explicand, model, num_samples, paired_sampling=Fals
 
     # Remove zero rows
     Z = Z[Z1_norm != 0]
-    Z1_norm = Z1_norm[Z1_norm != 0]    
+    Z1_norm = Z1_norm[Z1_norm != 0]
 
-    lev_inv_weights = Z1_norm * (num_features - Z1_norm)
-    weights = 1 / lev_inv_weights if leverage_sampling else np.ones_like(lev_inv_weights)
+    reweighting = compute_weights(Z1_norm) / distribution(Z1_norm)
+
     # If deterministically sampled, set weights to w(s)
     s = Z1_norm[:offset]
-    weights[:offset] = 1 / (s * (num_features - s) * scipy.special.binom(num_features, s))
+    reweighting[:offset] = 1 / (s * (num_features - s) * scipy.special.binom(num_features, s))
 
     inputs = baseline * (1 - Z) + explicand * Z
     vz = model.predict(inputs)
 
-    A_hat = Z.T @ np.diag(weights) @ Z
-    b_hat = Z.T @ np.diag(weights) @ (vz - v0)
+    ZTZ = Z.T @ np.diag(reweighting) @ Z
+    ZTv = Z.T @ np.diag(reweighting) @ (vz - v0)
     
-    assert A_hat.shape == (num_features, num_features)
-    assert b_hat.shape == (num_features,)
+    assert ZTZ.shape == (num_features, num_features)
+    assert ZTv.shape == (num_features,)
 
     return {
-        'A_hat': A_hat,
-        'b_hat': b_hat,
+        'ZTZ': ZTZ,
+        'ZTv': ZTv,
         'delta': v1 - v0,
     }
 
 def kernel_shap(baseline, explicand, model, num_samples, paired_sampling=False, leverage_sampling=False, use_determinisitic=False):
     components = get_components(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=leverage_sampling, use_determinisitic=use_determinisitic)
-    A_hat = components['A_hat']
-    b_hat = components['b_hat']
+    ZTZ = components['ZTZ']
+    ZTv = components['ZTv']
     delta = components['delta']
-    A_hat_inv_ones = np.linalg.solve(A_hat, np.ones_like(b_hat))
-    A_hat_inv_b_hat = np.linalg.solve(A_hat, b_hat)
+    ZTZ_inv_ones = np.linalg.solve(ZTZ, np.ones_like(ZTv))
+    ZTZ_inv_ZTv = np.linalg.solve(ZTZ, ZTv)
 
     return (
-        A_hat_inv_b_hat -
-        A_hat_inv_ones * (
-            np.sum(A_hat_inv_b_hat) - delta
-        ) / np.sum(A_hat_inv_ones)
+        ZTZ_inv_ZTv -
+        ZTZ_inv_ones * (
+            np.sum(ZTZ_inv_ZTv) - delta
+        ) / np.sum(ZTZ_inv_ones)
     )
 
 def kernel_shap_paired(baseline, explicand, model, num_samples):
@@ -105,16 +106,16 @@ def kernel_shap_leverage_optimized(baseline, explicand, model, num_samples):
 
 def weighted_regression(baseline, explicand, model, num_samples, paired_sampling=True, leverage_sampling=False):
     components = get_components(baseline, explicand, model, num_samples, paired_sampling=paired_sampling, leverage_sampling=leverage_sampling)
-    A_hat = components['A_hat']
-    b_hat = components['b_hat']
+    ZTZ = components['ZTZ']
+    ZTv = components['ZTv']
     delta = components['delta']
     # Solve
-    # [ A_hat 1 ] [ x ] = [ b_hat ]
+    # [ ZTZ 1 ] [ x ] = [ ZTv ]
     # [ 1      0 ] [ lambda ] = [ delta ]
-    matrix = np.block([[A_hat, np.ones((A_hat.shape[0], 1))], [np.ones((1, A_hat.shape[1])), 0]])
+    matrix = np.block([[ZTZ, np.ones((ZTZ.shape[0], 1))], [np.ones((1, ZTZ.shape[1])), 0]])
     
     delta = np.array([delta]).reshape((1,))
-    vector = np.concatenate([b_hat, delta])
+    vector = np.concatenate([ZTv, delta])
     return np.linalg.solve(matrix, vector)[:-1]
 
 def weighted_regression_leverage(baseline, explicand, model, num_samples, paired_sampling=True):

@@ -12,7 +12,7 @@ for n in [10, 100, 1000]:
     se.plot_probs(n, folder='images/')
     se.plot_sampled_sizes(n, m, folder='images/')
 
-for dataset in small_n + big_n:
+for dataset in []:#small_n + big_n:
     se.visualize_predictions(dataset, folder='images/')
 
 for dataset in small_n + big_n:
