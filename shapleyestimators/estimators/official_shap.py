@@ -4,7 +4,7 @@ def official_kernel_shap(baseline, explicand, model, num_samples):
     eval_model = lambda X : model.predict(X)
 
     explainer = shap.KernelExplainer(eval_model, baseline)
-    shap_values = explainer.shap_values(explicand, nsamples=num_samples, silent=True)
+    shap_values = explainer.shap_values(explicand, nsamples=num_samples, silent=True, l1_reg=False)
     return shap_values
 
 def official_permutation_shap(baseline, explicand, model, num_samples):
