@@ -18,8 +18,14 @@ dataset_loaders = {
     'NHANES' : shap.datasets.nhanesi,
 }
 
+def load_dataset(dataset_name):
+    X, y = dataset_loaders[dataset_name]()
+    # Remove nan values
+    X = X.fillna(X.mean())
+    return X, y
+
 def get_dataset_size(dataset):
-    X, y = dataset_loaders[dataset]()
+    X, y = load_dataset(dataset)
     return X.shape[1]
 
 def read_file(dataset, estimator, error_name):
@@ -64,7 +70,7 @@ def load_input(X, seed=None):
     return baseline, explicand
 
 def visualize_predictions(dataset, folder='', exclude=[]):
-    X, y = dataset_loaders[dataset]()
+    X, y = load_dataset(dataset)
     n = X.shape[1]
     num_samples = 5 * n
     model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
@@ -98,8 +104,8 @@ def visualize_predictions(dataset, folder='', exclude=[]):
     plt.savefig(filename, bbox_inches='tight', dpi=300)
     plt.clf()
 
-def benchmark(num_runs, dataset, estimators, sample_sizes = None, silent=False, weighted_error=False):
-    X, y = dataset_loaders[dataset]()
+def benchmark(num_runs, dataset, estimators, sample_sizes = None, silent=False, weighted_error=False, verbose=False):
+    X, y = load_dataset(dataset)
     # Assuming deterministic
     model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
     model.fit(X, y)
@@ -132,11 +138,11 @@ def benchmark(num_runs, dataset, estimators, sample_sizes = None, silent=False, 
                         break
                     except np.linalg.LinAlgError:
                         pass
-                if False:
+                if verbose:
                     print(estimator_name)
                     print('shap values', shap_values)
                     print('true shap values', true_shap_values)
-                    print('explicand - baseline', (explicand - baseline).round(2))
+                    print('explicand - baseline', (explicand - baseline))
 
                 filename = f'output/{dataset}_{estimator_name}.csv'
                 with open(filename, 'a') as f:
