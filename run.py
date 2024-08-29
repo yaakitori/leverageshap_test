@@ -20,7 +20,7 @@ for n in []:#10, 100, 1000]:
 for dataset in []:#small_n + big_n:
     se.visualize_predictions(dataset, folder='images/')
 
-for dataset in small_n + big_n:
+for dataset in small_n:# + big_n:
     print(dataset)
     n = se.get_dataset_size(dataset)
     sample_sizes = [int(n * i) for i in [5, 10, 20, 40, 80, 160]]
