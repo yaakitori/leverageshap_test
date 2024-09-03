@@ -17,17 +17,18 @@ for n in []:#10, 100, 1000]:
     se.plot_probs(n, folder='images/')
     se.plot_sampled_sizes(n, m, folder='images/')
 
-for dataset in []:#small_n + big_n:
+for dataset in small_n + big_n:
     se.visualize_predictions(dataset, folder='images/')
 
-for dataset in small_n:# + big_n:
+for dataset in small_n + big_n:
     print(dataset)
     n = se.get_dataset_size(dataset)
     sample_sizes = [int(n * i) for i in [5, 10, 20, 40, 80, 160]]
-    weighted_error = 2**n <= 1e7
-    results = se.benchmark(num_runs, dataset, se.estimators, sample_sizes, weighted_error=weighted_error, verbose=False)
-
-    image_filename = f'images/{dataset}.pdf'
-
-    se.plot_data(results, dataset, image_filename, weighted_error=weighted_error)
+    if 2**n <= 1e7:
+        results = se.benchmark(num_runs, dataset, se.estimators, sample_sizes, weighted_error=True, verbose=False)
+        image_filename = f'images/{dataset}_weighted.pdf'
+        se.plot_data(results, dataset, image_filename, weighted_error=True)
+    results = se.benchmark(num_runs, dataset, se.estimators, sample_sizes, weighted_error=False, verbose=False)
+    image_filename = f'images/{dataset}_l2.pdf'
+    se.plot_data(results, dataset, image_filename, weighted_error=False)
 

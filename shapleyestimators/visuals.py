@@ -10,8 +10,10 @@ def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False)
         if name in exclude or name == 'n':
             continue
         sample_sizes = list(data.keys())
-        mean_errors = [np.mean(data[sample_size]) for sample_size in sample_sizes]
-        plt.plot(sample_sizes, mean_errors, label=name, linestyle=linestyles[num % len(linestyles)])
+        mean = np.array([np.mean(data[sample_size]) for sample_size in sample_sizes])
+#        std = np.array([np.std(data[sample_size]) for sample_size in sample_sizes])
+        plt.plot(sample_sizes, mean, label=name, linestyle=linestyles[num % len(linestyles)])
+#        plt.fill_between(sample_sizes, mean - std, mean + std, alpha=0.2)
         num +=1
     # Put legend outside of plot
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
