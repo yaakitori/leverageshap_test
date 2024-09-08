@@ -1,28 +1,12 @@
 import matplotlib.pyplot as plt
 from .estimators import *
+from .datasets import *
 import numpy as np
 import xgboost as xgb
-import shap
 import os
 from tqdm import tqdm
 import scipy
 
-dataset_loaders = {
-    'Adult' : shap.datasets.adult,
-    'California' : shap.datasets.california,
-    'Communities' : shap.datasets.communitiesandcrime,
-    'Correlated' : shap.datasets.corrgroups60,
-    'Diabetes' : shap.datasets.diabetes,
-    'Independent' : shap.datasets.independentlinear60,
-    'IRIS' : shap.datasets.iris,
-    'NHANES' : shap.datasets.nhanesi,
-}
-
-def load_dataset(dataset_name):
-    X, y = dataset_loaders[dataset_name]()
-    # Remove nan values
-    X = X.fillna(X.mean())
-    return X, y
 
 def get_dataset_size(dataset):
     X, y = load_dataset(dataset)
@@ -56,18 +40,6 @@ def compute_weighted_error(baseline, explicand, model, shap_values):
     vz = model.predict(inputs)
     v0 = model.predict(baseline)
     return np.sum(weights * (shap_values @ Z.T - (vz - v0)) ** 2)
-
-def load_input(X, seed=None):
-    if seed is not None:
-        np.random.seed(seed)
-    baseline = X.mean().values.reshape(1, -1)
-    explicand_idx = np.random.choice(X.shape[0])
-    explicand = X.iloc[explicand_idx].values.reshape(1, -1)
-    for i in range(explicand.shape[1]):
-        while baseline[0, i] == explicand[0, i]:
-            explicand_idx = np.random.choice(X.shape[0])
-            explicand[0,i] = X.iloc[explicand_idx, i]
-    return baseline, explicand
 
 def visualize_predictions(dataset, folder='', exclude=[]):
     X, y = load_dataset(dataset)
@@ -122,7 +94,7 @@ def benchmark(num_runs, dataset, estimators, sample_sizes = None, silent=False, 
         for sample_size in sample_sizes:            
             # Randomly choose a baseline and explicand
             # Choose baseline and explicand so no variables are the same
-            baseline, explicand = load_input(X, seed=run_idx * num_runs)
+            baseline, explicand = load_input(X, seed=run_idx * num_runs, is_synthetic=dataset=='Synthetic')
 
             # Compute the true SHAP values (assuming tree model)
             true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, sample_size)

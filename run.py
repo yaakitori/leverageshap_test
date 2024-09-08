@@ -3,7 +3,7 @@ import shapleyestimators as se
 num_runs = 10
 dataset = 'Communities'
 
-small_n = ['Adult', 'California', 'Diabetes']
+small_n = ['Adult', 'California', 'Diabetes', 'Synthetic']
 
 big_n = ['Communities', 'Correlated', 'Independent', 'NHANES']
 
@@ -13,7 +13,7 @@ log = logging.getLogger('shap')
 #logging.basicConfig(level=logging.DEBUG)
 
 m = 10000
-for n in []:#10, 100, 1000]:
+for n in [10, 100, 1000]:
     se.plot_probs(n, folder='images/')
     se.plot_sampled_sizes(n, m, folder='images/')
 

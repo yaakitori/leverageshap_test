@@ -20,12 +20,14 @@ class RegressionEstimator:
         self.paired_sampling = paired_sampling
         self.n = self.baseline.shape[1] # Number of features
         self.gen = np.random.Generator(np.random.PCG64())
-        self.weight = lambda s : np.ones_like(s) if not leverage_sampling else 1 / (s * (self.n - s))
+        self.sample_weight = lambda s : 1 / (s * (self.n - s)) if not leverage_sampling else np.ones_like(s)
+        self.reweight = lambda s : 1 / (self.sample_weight(s) * (s * (self.n - s)))
     
     def sample(self):
         self.SZ_binary = np.zeros((self.m, self.n))
         valid_sizes = np.array(list(range(1, self.n)))
-        prob_sizes = np.ones_like(valid_sizes) / len(valid_sizes)
+        prob_sizes = self.sample_weight(valid_sizes)
+        prob_sizes = prob_sizes / np.sum(prob_sizes)
         sampled_sizes = self.gen.choice(valid_sizes, self.m, p=prob_sizes)
         for idx, s in enumerate(sampled_sizes):
             indices = self.gen.choice(self.n, s, replace=False)
@@ -59,8 +61,8 @@ class RegressionEstimator:
         # Projection matrix
         P = np.eye(self.n) - 1/self.n * np.ones((self.n, self.n))
 
-        PZSSb = P @ SZ_binary.T @ np.diag(self.weight(SZ_binary1)) @ Sb
-        PZSSZP = P @ SZ_binary.T @ np.diag(self.weight(SZ_binary1)) @ SZ_binary @ P
+        PZSSb = P @ SZ_binary.T @ np.diag(self.reweight(SZ_binary1)) @ Sb
+        PZSSZP = P @ SZ_binary.T @ np.diag(self.reweight(SZ_binary1)) @ SZ_binary @ P
         PZSSZP_inv_PZSSb = np.linalg.lstsq(PZSSZP, PZSSb, rcond=None)[0]
 
         self.phi = PZSSZP_inv_PZSSb + (v1 - v0) / self.n
