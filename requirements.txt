@@ -2,3 +2,4 @@ numpy
 shap
 xgboost
 matplotlib
+tabulate

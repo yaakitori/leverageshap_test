@@ -30,9 +30,11 @@ if False:
     num_runs = 0
     for dataset in small_n + big_n:
         print(dataset)
-        for hyperparameter in ['sample_size', 'noise_std']:
+        for hyperparameter in ['noise_std', 'sample_size']:
             print(hyperparameter)
             se.benchmark(num_runs, dataset, se.estimators, hyperparameter, get_hyperparameter_values(hyperparameter), silent=False)
+
+# Plots
 
 for y_name in ['shap_error', 'weighted_error']:
     # Performance by number of samples
@@ -43,7 +45,7 @@ for y_name in ['shap_error', 'weighted_error']:
 
     # Performance by noise level
     x_name = 'noise'
-    constraints = {'sample_size': 4000}
+    constraints = {'sample_size': 1000}
     results = se.load_results(small_n + big_n, x_name, y_name, constraints)
     se.plot_with_subplots(results, x_name, y_name, filename=f'images/{x_name}-{y_name}.pdf', log_x=True, log_y=y_name == 'shap_error')
 
@@ -53,16 +55,9 @@ for y_name in ['shap_error', 'weighted_error']:
     results = se.load_results(small_n + big_n, x_name, y_name, constraints)
     se.plot_with_subplots(results, x_name, y_name, filename=f'images/{x_name}-{y_name}.pdf', log_x=False, log_y=y_name == 'shap_error')
 
-# Plotting
-# Performance by number of samples
-# Performance by noise level
-# Performance by gamma
+# Table
 
-    #if 2**n <= 1e7:
-    #    results = se.benchmark(num_runs, dataset, se.estimators, sample_sizes, weighted_error=True, verbose=False)
-    #    image_filename = f'images/{dataset}_weighted.pdf'
-    #    se.plot_data(results, dataset, image_filename, weighted_error=True)
-    #results = se.benchmark(num_runs, dataset, se.estimators, sample_sizes, weighted_error=False, verbose=False)
-    #image_filename = f'images/{dataset}_l2.pdf'
-    #se.plot_data(results, dataset, image_filename, weighted_error=False)
-
+for y_name in ['shap_error', 'weighted_error']:
+    results = se.load_results(small_n + big_n, 'sample_size', y_name, {'noise': 0, 'sample_size' : 2000})
+    for dataset in results:
+        se.benchmark_table(results[dataset], f'tables/{dataset}-{y_name}.tex', print_md=True)

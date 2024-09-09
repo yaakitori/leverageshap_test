@@ -24,9 +24,7 @@ def build_full_linear_system(baseline, explicand, model):
             idx += 1
     binary_Z1_norm = np.sum(binary_Z, axis=1)
     inv_sqrt_weights = np.sqrt(binary_Z1_norm * (n - binary_Z1_norm) * scipy.special.binom(n, binary_Z1_norm))
-    # Error in the following line: ValueError: operands could not be broadcast together with shapes (4094,) (4094,12) 
-#    Z = 1 / inv_sqrt_weights * binary_Z
-    # Fix the error by changing the following line
+
     Z = 1 / inv_sqrt_weights[:, np.newaxis] * binary_Z
     P = np.eye(n) - np.ones((n, n)) / n
     A = Z @ P
@@ -172,61 +170,16 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std):
             f.write(str(dict) + '\n')
 
 def benchmark(num_runs, dataset, estimators, hyperparameter, hyperparameter_values, silent=False):              
-#              sample_sizes = None, silent=False, weighted_error=False, verbose=False):
+
     X, y = load_dataset(dataset)
     n = X.shape[1]
     # Assuming deterministic
     model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
     model.fit(X, y)
-#    error_name = 'weighted_error' if weighted_error else 'shap_error'
 
-#    saved = {}
-#    for estimator_name in estimators.keys():
-#        saved[estimator_name] = read_file(dataset, estimator_name, error_name)
-#        for sample_size in sample_sizes:
-#            if sample_size not in saved[estimator_name]:
-#                saved[estimator_name][sample_size] = []
-    config = {'sample_size': 4000, 'noise_std' : 0}
+    config = {'sample_size': 1000, 'noise_std' : 0}
     for run_idx in tqdm(range(num_runs), disable=silent):
         for hyperparameter_value in hyperparameter_values:
             config[hyperparameter] = hyperparameter_value
             run_one_iteration(X, run_idx * num_runs, dataset, model, sample_size=config['sample_size'], noise_std=config['noise_std'])
-            ## Randomly choose a baseline and explicand
-            ## Choose baseline and explicand so no variables are the same
-            #baseline, explicand = load_input(X, seed=run_idx * num_runs, is_synthetic=dataset=='Synthetic')
-
-            ## Compute the true SHAP values (assuming tree model)
-            #true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, sample_size)
-            #if weighted_error:
-            #    best_weighted_error = compute_weighted_error(baseline, explicand, model, true_shap_values)
-
-            #for estimator_name, estimator in estimators.items():
-            #    if len(saved[estimator_name][sample_size]) >= num_runs:
-            #        continue
-            #    while True:
-            #        try:
-            #            shap_values = estimator(baseline, explicand, model, sample_size)
-            #            break
-            #        except np.linalg.LinAlgError:
-            #            pass
-            #    if verbose:
-            #        print(estimator_name)
-            #        print('shap values', shap_values)
-            #        print('true shap values', true_shap_values)
-            #        print('explicand - baseline', (explicand - baseline))
-
-            #    filename = f'output/{dataset}_{estimator_name}.csv'
-            #    with open(filename, 'a') as f:
-            #        dict = {'sample_size': sample_size}
-            #        dict['shap_error'] = ((shap_values - true_shap_values) ** 2).mean()
-            #        if weighted_error:
-            #            dict['weighted_error'] = compute_weighted_error(baseline, explicand, model, shap_values) / best_weighted_error
-            #        f.write(str(dict) + '\n')
-    
-    #saved = {'n': X.shape[1]}
-    #for estimator_name in estimators.keys():
-    #    saved[estimator_name] = read_file(dataset, estimator_name, 'shap_error')
-    #return saved
-
-
 
