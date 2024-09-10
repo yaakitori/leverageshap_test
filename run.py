@@ -17,7 +17,7 @@ def get_hyperparameter_values(name):
 #log = logging.getLogger('shap')
 #logging.basicConfig(level=logging.DEBUG)
 
-if False:
+if True:
 
     m = 10000
     for n in [10, 100, 1000]:
@@ -55,9 +55,9 @@ for y_name in ['shap_error', 'weighted_error']:
     results = se.load_results(small_n + big_n, x_name, y_name, constraints)
     se.plot_with_subplots(results, x_name, y_name, filename=f'images/{x_name}-{y_name}.pdf', log_x=False, log_y=y_name == 'shap_error')
 
-# Table
-
+# Tables
 for y_name in ['shap_error', 'weighted_error']:
     results = se.load_results(small_n + big_n, 'sample_size', y_name, {'noise': 0, 'sample_size' : 2000})
+    se.one_big_table(results, f'tables/{y_name}.tex')
     for dataset in results:
-        se.benchmark_table(results[dataset], f'tables/{dataset}-{y_name}.tex', print_md=True)
+        se.benchmark_table(results[dataset], f'tables/{dataset}-{y_name}.tex', print_md=False)
