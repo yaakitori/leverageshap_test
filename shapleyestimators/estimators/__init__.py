@@ -12,6 +12,7 @@ estimators = {
     'Official KernelSHAP': official_kernel_shap,    
     'LeverageSHAP': leverage_shap,
     'LeverageSHAP Paired' : leverage_shap_paired,
+    'LeverageSHAP Bernoulli': leverage_shap_bernoulli,
     'Official Tree SHAP': official_tree_shap,
     #'LeverageSHAP New': leverage_shap_new,
     #'LeverageSHAP New Paired': leverage_shap_new_paired,

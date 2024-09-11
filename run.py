@@ -19,18 +19,18 @@ def get_hyperparameter_values(name):
 
 if True:
 
-    m = 10000
+    m = 1000
     for n in [10, 100, 1000]:
         se.plot_probs(n, folder='images/')
         se.plot_sampled_sizes(n, m, folder='images/')
 
-    for dataset in small_n + big_n:
-        se.visualize_predictions(dataset, folder='images/')
+    #for dataset in small_n + big_n:
+    #    se.visualize_predictions(dataset, folder='images/')
 
-    num_runs = 0
-    for dataset in small_n + big_n:
+    num_runs = 10
+    for dataset in ['NHANES', 'Communities']:#small_n + big_n:
         print(dataset)
-        for hyperparameter in ['noise_std', 'sample_size']:
+        for hyperparameter in ['sample_size', 'noise_std']:
             print(hyperparameter)
             se.benchmark(num_runs, dataset, se.estimators, hyperparameter, get_hyperparameter_values(hyperparameter), silent=False)
 

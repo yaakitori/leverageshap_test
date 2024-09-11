@@ -143,9 +143,11 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std):
     if is_small:
         linear_system = build_full_linear_system(baseline, explicand, model)
         best_weighted_error = np.sum((linear_system['A'] @ true_shap_values - linear_system['b'])**2)
-        gamma = np.sum(linear_system['b']**2) / np.sum((linear_system['A'] @ true_shap_values)**2)    
+        Aphi = linear_system['A'] @ true_shap_values
+        gamma = np.sum((Aphi - linear_system['b'])**2) / np.sum((Aphi)**2)    
+        normalized_gamma = gamma / np.sum((true_shap_values)**2)
         # Round for plotting purposes
-        gamma = round(gamma, 1)
+        normalized_gamma = round(normalized_gamma, 1)
      
     noised_model = NoisyModel(model, noise_std)
     for estimator_name, estimator in estimators.items():
@@ -166,7 +168,7 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std):
             if is_small:
                 weighted_error = np.sum((linear_system['A'] @ shap_values - linear_system['b'])**2)
                 dict['weighted_error'] = weighted_error / best_weighted_error
-                dict['gamma'] = gamma
+                dict['gamma'] = normalized_gamma
             f.write(str(dict) + '\n')
 
 def benchmark(num_runs, dataset, estimators, hyperparameter, hyperparameter_values, silent=False):              

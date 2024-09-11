@@ -1,5 +1,47 @@
 import numpy as np
 from tabulate import tabulate
+import math
+
+def ith_combination(pool, r, index):
+    # Function written by ChatGPT
+    """
+    Compute the index-th combination (0-based) in lexicographic order
+    without generating all previous combinations.
+    """
+    n = len(pool)
+    combination = []
+    elements_left = n
+    k = r
+    start = 0
+    
+    for i in range(r):
+        # Find the largest value for the first element in the combination
+        # that allows completing the remaining k-1 elements
+        for j in range(start, elements_left):
+            count = math.comb(elements_left - j - 1, k - 1)
+            if index < count:
+                combination.append(pool[j])
+                k -= 1
+                start = j + 1
+                break
+            index -= count
+    
+    return tuple(combination)
+
+def combination_generator(gen, n, s, num_samples):
+    """
+    Generate num_samples random combinations of s elements from a pool num_samples of size n in two settings:
+    1. If the number of combinations is small (converting to an int does NOT cause an overflow error), randomly sample num_samples integers without replacement and generate the corresponding combinations on the fly with ith_combination.
+    2. If the number of combinations is large (converting to an int DOES cause an overflow error), randomly sample num_samples combinations directly with replacement.
+    """
+    num_combos = math.comb(n, s)
+    try:
+        indices = gen.choice(num_combos, num_samples, replace=False)
+        for i in indices:
+            yield ith_combination(range(n), s, i)
+    except OverflowError:
+        for _ in range(num_samples):
+            yield gen.choice(n, s, replace=False)
 
 def fancy_round(x, precision=3):
     return float(np.format_float_positional(x, precision=precision, unique=False, fractional=False, trim='k'))
@@ -139,60 +181,3 @@ def one_big_table_old(results, filename, include_color=True):
             f.write(to_print + '\n')
         f.write('\\bottomrule\n')
         f.write('\\end{tabular}}')
-
-
-
-# Combine the two tables
-
-# Table 1
-# \begin{tabular}{lllll}
-#   \toprule
-#   \textbf{Method} & \textbf{Mean} & \textbf{1st Quartile} & \textbf{2nd Quartile} & \textbf{3rd Quartile} \\ \midrule 
-# KernelSHAP & 2.89e-06 & 8.63e-07 & 1.30e-06 & 2.35e-06\\
-# KernelSHAP Paired & \cellcolor{bronze!60}2.54e-07 & \cellcolor{gold!60}3.36e-08 & \cellcolor{bronze!60}1.09e-07 & \cellcolor{bronze!60}2.10e-07\\
-# Official KernelSHAP & \cellcolor{silver!60}1.61e-07 & \cellcolor{silver!60}4.52e-08 & \cellcolor{silver!60}8.54e-08 & \cellcolor{gold!60}1.70e-07\\
-# LeverageSHAP & 3.05e-06 & 5.87e-07 & 1.25e-06 & 2.52e-06\\
-# LeverageSHAP Paired & \cellcolor{gold!60}1.32e-07 & \cellcolor{bronze!60}5.07e-08 & \cellcolor{gold!60}8.22e-08 & \cellcolor{silver!60}1.96e-07\\
-# \bottomrule
-# \end{tabular}
-
-# Table 2
-# \begin{tabular}{lllll}
-#   \toprule
-#   \textbf{Method} & \textbf{Mean} & \textbf{1st Quartile} & \textbf{2nd Quartile} & \textbf{3rd Quartile} \\ \midrule 
-# KernelSHAP & 1.01e+00 & \cellcolor{gold!60}1.00e+00 & 1.01e+00 & 1.01e+00\\
-# KernelSHAP Paired & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00\\
-# Official KernelSHAP & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00\\
-# LeverageSHAP & 1.01e+00 & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00 & 1.01e+00\\
-# LeverageSHAP Paired & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00 & \cellcolor{gold!60}1.00e+00\\
-# \bottomrule
-# \end{tabular}
-
-# Combine Table 1 and Table 2 into a single table with the following formatting
-
-#\begin{tabular} {lccccc||cccccc}
-#    \toprule
-#    & \multicolumn{5}{c}{\textbf{Calibration (Negative Log-Likelihood)}} & \multicolumn{5}{c}{\textbf{Consistency}} \\ 
-#    \textbf{Approach} & \textbf{ACS} & \textbf{Adult} & \textbf{Bank} & \textbf{COMPAS} & \textbf{German} & \textbf{ACS} & \textbf{Adult} & \textbf{Bank} & \textbf{COMPAS} & \textbf{German} \\ \midrule
-#    \textit{Ensemble} & \cellcolor{bronze!30}\footnotesize{1.1 \smallerpm 0.04} & \footnotesize{0.9 \smallerpm 0.02} & \cellcolor{bronze!30}\footnotesize{0.5 \smallerpm 0.02} & \cellcolor{bronze!30}\footnotesize{1.8 \smallerpm 0.07} & \cellcolor{bronze!30}\footnotesize{0.97 \smallerpm 0.12} & \cellcolor{gold!30}\footnotesize{0.08 \smallerpm 0.00} & \cellcolor{gold!30}\footnotesize{0.08 \smallerpm 0.01} & \cellcolor{gold!30}\footnotesize{0.09 \smallerpm 0.01} & \cellcolor{gold!30}\footnotesize{0.06 \smallerpm 0.00} & \cellcolor{gold!30}\footnotesize{0.062 \smallerpm 0.00} \\ 
-#    \emph{Selective Ens.} & \cellcolor{bronze!30}\footnotesize{1.1 \smallerpm 0.05} & \cellcolor{bronze!30}\footnotesize{0.88 \smallerpm 0.02} & \cellcolor{bronze!30}\footnotesize{0.5 \smallerpm 0.02} & \cellcolor{bronze!30}\footnotesize{1.8 \smallerpm 0.08} & \footnotesize{1.0 \smallerpm 0.16} & \footnotesize{0.45 \smallerpm 0.01} & \footnotesize{0.45 \smallerpm 0.01} & \footnotesize{0.45 \smallerpm 0.01} & \footnotesize{0.44 \smallerpm 0.01} & \footnotesize{0.40 \smallerpm 0.02} \\ 
-#    \textit{(In)cons. Ens.} & \cellcolor{silver!30}\footnotesize{1.0 \smallerpm 0.04} & \cellcolor{silver!30}\footnotesize{0.82 \smallerpm 0.03} & \cellcolor{silver!30}\footnotesize{0.42 \smallerpm 0.02} & \cellcolor{silver!30}\footnotesize{1.5 \smallerpm 0.07} & \cellcolor{silver!30}\footnotesize{0.82 \smallerpm 0.13} & \cellcolor{bronze!30}\footnotesize{0.26 \smallerpm 0.01} & \cellcolor{bronze!30}\footnotesize{0.26 \smallerpm 0.01} & \cellcolor{bronze!30}\footnotesize{0.25 \smallerpm 0.01} & \cellcolor{bronze!30}\footnotesize{0.25 \smallerpm 0.01} & \cellcolor{bronze!30}\footnotesize{0.21\smallerpm 0.01} \\ 
-#    \textit{Binom. NLL} & \cellcolor{gold!30}\footnotesize{0.4 \smallerpm 0.01} & \cellcolor{gold!30}\footnotesize{0.31 \smallerpm 0.0} & \cellcolor{gold!30}\footnotesize{0.2 \smallerpm 0.0} & \cellcolor{gold!30}\footnotesize{0.6 \smallerpm 0.01} & \cellcolor{gold!30}\footnotesize{0.5 \smallerpm 0.04} & \cellcolor{silver!30}\footnotesize{0.10 \smallerpm 0.01} & \cellcolor{silver!30}\footnotesize{0.13 \smallerpm 0.01} & \cellcolor{silver!30}\footnotesize{0.12 \smallerpm 0.01} & \cellcolor{silver!30}\footnotesize{0.07 \smallerpm 0.00} & \cellcolor{silver!30}\footnotesize{0.08 \smallerpm 0.01} \\ 
-#    \bottomrule
-#    \end{tabular}}
-
-#def combine_tables(filename1, filename2, output_filename):
-#    with open(filename1, 'r') as f:
-#        lines1 = f.readlines()
-#    with open(filename2, 'r') as f:
-#        lines2 = f.readlines()
-#    with open(output_filename, 'w') as f:
-#        f.write('\\begin{tabular} {lccccc||cccccc}\n')
-#        f.write('    \\toprule\n')
-#        f.write('    & \\multicolumn{5}{c}{\\textbf{$\ell_2$ Error}} & \\multicolumn{5}{c}{\\textbf{Objective Error}} \\\\ \n')
-#        colnames = '& \\textbf{Mean} & \\textbf{1st Quartile} & \\textbf{2nd Quartile} & \\textbf{3rd Quartile}'
-#        f.write('    \\textbf{Approach} ' + colnames + ' & ' + colnames + ' \\\\ \\midrule \n')
-#        for i in range(3, len(lines1)):
-#            f.write(lines1[i].strip().replace('\\\\', '') + ' & ' + lines2[i].strip() + '\n')
-#        f.write('    \\bottomrule\n')
-#        f.write('    \\end{tabular}')

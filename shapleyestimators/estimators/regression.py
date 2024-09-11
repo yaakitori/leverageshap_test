@@ -1,7 +1,6 @@
 import numpy as np
 import scipy
-import itertools
-
+from ..utils import *
 import scipy.special
 
 # Compute b
@@ -9,36 +8,89 @@ import scipy.special
 # Compute v1-v0
 
 class RegressionEstimator:
-    def __init__(self, model, baseline, explicand, num_samples, paired_sampling=False, leverage_sampling=False):
+    def __init__(self, model, baseline, explicand, num_samples, paired_sampling=False, leverage_sampling=False, bernoulli_sampling=False):
         self.model = model
         self.baseline = baseline
         self.explicand = explicand
-        # Subtract 2 for the baseline and explicand
-        num_samples = num_samples -2 
-        # Make sure num_samples is even
-        self.m = int((num_samples) // 2) * 2
+        # Subtract 2 for the baseline and explicand and ensure num_samples is even
+        self.num_samples = int((num_samples -2 ) // 2) * 2
         self.paired_sampling = paired_sampling
         self.n = self.baseline.shape[1] # Number of features
         self.gen = np.random.Generator(np.random.PCG64())
         self.sample_weight = lambda s : 1 / (s * (self.n - s)) if not leverage_sampling else np.ones_like(s)
         self.reweight = lambda s : 1 / (self.sample_weight(s) * (s * (self.n - s)))
+        self.kernel_weights = []
+        self.sample = self.sample_with_replacement if not bernoulli_sampling else self.sample_without_replacement
     
-    def sample(self):
-        self.SZ_binary = np.zeros((self.m, self.n))
+    def add_one_sample(self, idx, indices, weight):
+        if not self.paired_sampling:
+            self.SZ_binary[idx, indices] = 1
+            self.kernel_weights.append(weight)
+        else:
+            indices_complement = np.array([i for i in range(self.n) if i not in indices])
+            self.SZ_binary[2*idx, indices] = 1
+            self.kernel_weights.append(weight)
+            self.SZ_binary[2*idx+1, indices_complement] = 1
+            self.kernel_weights.append(weight)
+
+    
+    def sample_with_replacement(self):
+        self.SZ_binary = np.zeros((self.num_samples, self.n))
         valid_sizes = np.array(list(range(1, self.n)))
         prob_sizes = self.sample_weight(valid_sizes)
         prob_sizes = prob_sizes / np.sum(prob_sizes)
-        sampled_sizes = self.gen.choice(valid_sizes, self.m, p=prob_sizes)
+        num_sizes = self.num_samples if not self.paired_sampling else self.num_samples // 2
+        sampled_sizes = self.gen.choice(valid_sizes, num_sizes, p=prob_sizes)
         for idx, s in enumerate(sampled_sizes):
             indices = self.gen.choice(self.n, s, replace=False)
-            if not self.paired_sampling:
-                self.SZ_binary[idx, indices] = 1
-            if self.paired_sampling: # Add complement if paired sampling
-                indices_complement = np.array([i for i in range(self.n) if i not in indices])
-                self.SZ_binary[2*idx, indices_complement] = 1
-                self.SZ_binary[2*idx+1, indices] = 1
-                # Break half way through if paired sampling            
-                if idx >= (self.m - 2) // 2 -1: break
+            # weight = Pr(sampling this set) * w(s)
+            weight = 1 / (self.sample_weight(s) * s * (self.n - s))
+            self.add_one_sample(idx, indices, weight=weight)
+
+    
+    def sample_without_replacement(self):
+        # Choose C so that sampling without replacement from min(1, C*prob) gives the same expected number of samples
+        C = 1 # Assume at least n samples
+        m = self.num_samples
+        m = min(m, 2**self.n-2) # Maximum number of samples is 2^n -2
+        #if self.paired_sampling: m = m // 2
+        def expected_samples(C):
+            expected = [min(scipy.special.binom(self.n, s), C * self.sample_weight(s)) for s in range(1, self.n)]
+            #print(f'Expected samples: {np.sum(expected)}')
+            #print(f'Constraint: {m}')
+            #print(f'C: {C}')
+            return np.sum(expected)
+        # Efficiently find C with binary search
+        while expected_samples(C) < m:
+            L = C
+            C *= 2
+            R = C
+        while R - L >= .01:
+            C = (L + R) / 2
+            if expected_samples(C) < m: L = C
+            else: R = C
+        C = int(C) + 1
+        m_s_all = []
+        for s in range(1, self.n):
+            # Sample from Binomial distribution with (n choose s) trials and probability min(1, C*sample_weight(s) / (n choose s))
+            prob = min(1, C * self.sample_weight(s) / scipy.special.binom(self.n, s))
+            try:
+                m_s = self.gen.binomial(scipy.special.binom(self.n, s), prob)
+            except OverflowError:
+                m_s = int(prob * scipy.special.binom(self.n, s))
+            m_s_all.append(m_s)
+        sampled_m = np.sum(m_s_all)
+        num_rows = sampled_m if not self.paired_sampling else int(sampled_m * 2)
+        self.SZ_binary = np.zeros((num_rows, self.n))
+        idx = 0
+        for s, m_s in enumerate(m_s_all):
+            s += 1
+            prob = min(1, C * self.sample_weight(s) / scipy.special.binom(self.n, s))
+            weight = 1 / (prob * scipy.special.binom(self.n, s) * (self.n - s) * s )
+            combo_gen = combination_generator(self.gen, self.n, s, m_s)
+            for indices in combo_gen:
+                self.add_one_sample(idx, list(indices), weight = weight)
+                idx += 1
     
     def compute(self):
         # Sample
@@ -61,20 +113,23 @@ class RegressionEstimator:
         # Projection matrix
         P = np.eye(self.n) - 1/self.n * np.ones((self.n, self.n))
 
-        PZSSb = P @ SZ_binary.T @ np.diag(self.reweight(SZ_binary1)) @ Sb
-        PZSSZP = P @ SZ_binary.T @ np.diag(self.reweight(SZ_binary1)) @ SZ_binary @ P
+        PZSSb = P @ SZ_binary.T @ np.diag(self.kernel_weights) @ Sb
+        PZSSZP = P @ SZ_binary.T @ np.diag(self.kernel_weights) @ SZ_binary @ P
         PZSSZP_inv_PZSSb = np.linalg.lstsq(PZSSZP, PZSSb, rcond=None)[0]
 
         self.phi = PZSSZP_inv_PZSSb + (v1 - v0) / self.n
 
         return self.phi
 
-def leverage_shap(baseline, explicand, model, num_samples, paired_sampling=False):
-    estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=paired_sampling, leverage_sampling=True)
+def leverage_shap(baseline, explicand, model, num_samples, paired_sampling=False, bernoulli_sampling=False):
+    estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=paired_sampling, leverage_sampling=True, bernoulli_sampling=bernoulli_sampling)
     return estimator.compute()
 
 def leverage_shap_paired(baseline, explicand, model, num_samples):
     return leverage_shap(baseline, explicand, model, num_samples, paired_sampling=True)
+
+def leverage_shap_bernoulli(baseline, explicand, model, num_samples):
+    return leverage_shap(baseline, explicand, model, num_samples, paired_sampling=True, bernoulli_sampling=True)
 
 def kernel_shap(baseline, explicand, model, num_samples, paired_sampling=False):
     estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=paired_sampling, leverage_sampling=False)
