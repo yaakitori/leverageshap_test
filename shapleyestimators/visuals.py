@@ -38,7 +38,11 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
             x_values = list(results_by_estimator.keys())
             x_values = sorted(x_values)
             y_mean = [np.mean(results_by_estimator[x]) for x in x_values]
-            ax.plot(x_values, y_mean, label=estimator_name, linestyle=linestyles_lookup[estimator_name], color=cbcolors_lookup[estimator_name])
+            y_median = np.array([np.median(results_by_estimator[x]) for x in x_values])
+            y_upper = np.array([np.percentile(results_by_estimator[x], 75) for x in x_values])
+            y_lower = np.array([np.percentile(results_by_estimator[x], 25) for x in x_values])
+            ax.plot(x_values, y_median, label=estimator_name, linestyle=linestyles_lookup[estimator_name], color=cbcolors_lookup[estimator_name])
+            ax.fill_between(x_values, y_lower, y_upper, alpha=0.2, color=cbcolors_lookup[estimator_name])
 
         ax.set_title(rf'{dataset} $(n = {n})$')
         if log_x: ax.set_xscale('log')

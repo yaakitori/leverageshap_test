@@ -24,11 +24,11 @@ if True:
         se.plot_probs(n, folder='images/')
         se.plot_sampled_sizes(n, m, folder='images/')
 
-    #for dataset in small_n + big_n:
-    #    se.visualize_predictions(dataset, folder='images/')
+#    for dataset in small_n + big_n:
+#        se.visualize_predictions(dataset, folder='images/', exclude=['Official Tree SHAP'])
 
     num_runs = 10
-    for dataset in ['NHANES', 'Communities']:#small_n + big_n:
+    for dataset in small_n + big_n:
         print(dataset)
         for hyperparameter in ['sample_size', 'noise_std']:
             print(hyperparameter)
@@ -59,5 +59,5 @@ for y_name in ['shap_error', 'weighted_error']:
 for y_name in ['shap_error', 'weighted_error']:
     results = se.load_results(small_n + big_n, 'sample_size', y_name, {'noise': 0, 'sample_size' : 2000})
     se.one_big_table(results, f'tables/{y_name}.tex')
-    for dataset in results:
-        se.benchmark_table(results[dataset], f'tables/{dataset}-{y_name}.tex', print_md=False)
+    #for dataset in results:
+    #    se.benchmark_table(results[dataset], f'tables/{dataset}-{y_name}.tex', print_md=False)

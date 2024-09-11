@@ -21,8 +21,12 @@ class RegressionEstimator:
         self.reweight = lambda s : 1 / (self.sample_weight(s) * (s * (self.n - s)))
         self.kernel_weights = []
         self.sample = self.sample_with_replacement if not bernoulli_sampling else self.sample_without_replacement
+        #self.used_indices = set()
     
     def add_one_sample(self, idx, indices, weight):
+        #indices = sorted(indices)
+        #if tuple(indices) in self.used_indices: return
+        #self.used_indices.add(tuple(indices))
         if not self.paired_sampling:
             self.SZ_binary[idx, indices] = 1
             self.kernel_weights.append(weight)
@@ -46,14 +50,11 @@ class RegressionEstimator:
             # weight = Pr(sampling this set) * w(s)
             weight = 1 / (self.sample_weight(s) * s * (self.n - s))
             self.add_one_sample(idx, indices, weight=weight)
-
     
-    def sample_without_replacement(self):
+    def find_constant_for_bernoulli(self, max_C = 1e10):
         # Choose C so that sampling without replacement from min(1, C*prob) gives the same expected number of samples
-        C = 1 # Assume at least n samples
-        m = self.num_samples
-        m = min(m, 2**self.n-2) # Maximum number of samples is 2^n -2
-        #if self.paired_sampling: m = m // 2
+        C = 1 # Assume at least n - 1 samples
+        m = min(self.num_samples, 2**self.n-2) # Maximum number of samples is 2^n -2
         def expected_samples(C):
             expected = [min(scipy.special.binom(self.n, s), C * self.sample_weight(s)) for s in range(1, self.n)]
             #print(f'Expected samples: {np.sum(expected)}')
@@ -61,36 +62,51 @@ class RegressionEstimator:
             #print(f'C: {C}')
             return np.sum(expected)
         # Efficiently find C with binary search
-        while expected_samples(C) < m:
-            L = C
-            C *= 2
-            R = C
-        while R - L >= .01:
-            C = (L + R) / 2
+        L = 1
+        R = scipy.special.binom(self.n, self.n // 2)
+        while round(expected_samples(C)) != m:
             if expected_samples(C) < m: L = C
             else: R = C
-        C = int(C) + 1
+            C = (L + R) / 2
+        self.C = round(C)
+    
+    def sample_without_replacement(self):
+        self.find_constant_for_bernoulli()
         m_s_all = []
         for s in range(1, self.n):
             # Sample from Binomial distribution with (n choose s) trials and probability min(1, C*sample_weight(s) / (n choose s))
-            prob = min(1, C * self.sample_weight(s) / scipy.special.binom(self.n, s))
+            prob = min(1, self.C * self.sample_weight(s) / scipy.special.binom(self.n, s))
             try:
-                m_s = self.gen.binomial(scipy.special.binom(self.n, s), prob)
-            except OverflowError:
+                m_s = self.gen.binomial(int(scipy.special.binom(self.n, s)), prob)
+            except OverflowError: # If the number of samples is too large, assume the number of samples is the expected number
                 m_s = int(prob * scipy.special.binom(self.n, s))
+            if self.paired_sampling:
+                if s == self.n // 2: # Already sampled all larger sets with the complement                    
+                    if self.n % 2 == 0: # Special handling for middle set size if n is even
+                        m_s_all.append(m_s // 2)
+                    else: m_s_all.append(m_s)
+                    break
             m_s_all.append(m_s)
         sampled_m = np.sum(m_s_all)
-        num_rows = sampled_m if not self.paired_sampling else int(sampled_m * 2)
+        num_rows = sampled_m if not self.paired_sampling else sampled_m * 2
         self.SZ_binary = np.zeros((num_rows, self.n))
         idx = 0
         for s, m_s in enumerate(m_s_all):
             s += 1
-            prob = min(1, C * self.sample_weight(s) / scipy.special.binom(self.n, s))
+            prob = min(1, self.C * self.sample_weight(s) / scipy.special.binom(self.n, s))
             weight = 1 / (prob * scipy.special.binom(self.n, s) * (self.n - s) * s )
-            combo_gen = combination_generator(self.gen, self.n, s, m_s)
-            for indices in combo_gen:
-                self.add_one_sample(idx, list(indices), weight = weight)
-                idx += 1
+            if self.paired_sampling and s == self.n // 2 and self.n % 2 == 0:
+                # Partition the all middle sets into two
+                # based on whether the combination contains n-1
+                combo_gen = combination_generator(self.gen, self.n - 1, s-1, m_s)
+                for indices in combo_gen:
+                    self.add_one_sample(idx, list(indices) + [self.n-1], weight = weight)
+                    idx += 1
+            else:
+                combo_gen = combination_generator(self.gen, self.n, s, m_s)
+                for indices in combo_gen:
+                    self.add_one_sample(idx, list(indices), weight = weight)
+                    idx += 1
     
     def compute(self):
         # Sample

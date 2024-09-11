@@ -42,6 +42,7 @@ def get_dataset_size(dataset):
 
 def read_file(dataset, estimator, x_name, y_name, constraints={}):
     filename = f'output/{dataset}_{estimator}.csv'
+    if not os.path.exists(filename): return {}
     results = {}
     with open(filename, 'r') as f:
         for line in f:
@@ -130,8 +131,14 @@ class NoisyModel:
     def __init__(self, model, noise_std):
         self.model = model
         self.noise_std = noise_std
+        self.sample_count = 0
+
     def predict(self, X):
+        self.sample_count += len(X)
         return self.model.predict(X) + np.random.normal(0, self.noise_std, X.shape[0])
+    
+    def get_sample_count(self):
+        return self.sample_count
 
 def run_one_iteration(X, seed, dataset, model, sample_size, noise_std):
     baseline, explicand = load_input(X, seed=seed, is_synthetic=dataset=='Synthetic')
@@ -146,24 +153,24 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std):
         Aphi = linear_system['A'] @ true_shap_values
         gamma = np.sum((Aphi - linear_system['b'])**2) / np.sum((Aphi)**2)    
         normalized_gamma = gamma / np.sum((true_shap_values)**2)
-        # Round for plotting purposes
-        normalized_gamma = round(normalized_gamma, 1)
+        # Round to 2 significant figures
+        normalized_gamma = float(f'{normalized_gamma:.2g}')
      
-    noised_model = NoisyModel(model, noise_std)
-    for estimator_name, estimator in estimators.items():
+    for estimator_name, estimator in estimators.items():        
         if estimator_name in ['Official Tree SHAP']:
             continue
-        while True:
-            try:
-                shap_values = estimator(baseline, explicand, noised_model, sample_size).flatten()
-                break
-            except np.linalg.LinAlgError:
-                print('LinAlgError:', estimator_name)
-                pass
+        noised_model = NoisyModel(model, noise_std)
+        shap_values = estimator(baseline, explicand, noised_model, sample_size).flatten()
 
         filename = f'output/{dataset}_{estimator_name}.csv'
+
         with open(filename, 'a') as f:
-            dict = {'sample_size': sample_size, 'noise': noise_std}
+            dict = {
+                'sample_size': sample_size,
+                'difference': noised_model.get_sample_count() - sample_size,
+                'noise': noise_std,
+                'n' : n,
+            }
             dict['shap_error'] = ((shap_values - true_shap_values) ** 2).mean()
             if is_small:
                 weighted_error = np.sum((linear_system['A'] @ shap_values - linear_system['b'])**2)
