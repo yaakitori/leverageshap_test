@@ -17,7 +17,7 @@ def get_hyperparameter_values(name):
 #log = logging.getLogger('shap')
 #logging.basicConfig(level=logging.DEBUG)
 
-if False:
+if True:
 
     m = 1000
     for n in [10, 100, 1000]:
@@ -27,7 +27,7 @@ if False:
     for dataset in small_n + big_n:
         ls.visualize_predictions(dataset, folder='images/', exclude=['Official Tree SHAP'])
 
-    num_runs = 10
+    num_runs = 100
     for dataset in small_n + big_n:
         print(dataset)
         for hyperparameter in ['sample_size', 'noise_std']:
