@@ -17,15 +17,15 @@ def get_hyperparameter_values(name):
 #log = logging.getLogger('shap')
 #logging.basicConfig(level=logging.DEBUG)
 
-if True:
+if False:
 
     m = 1000
     for n in [10, 100, 1000]:
         se.plot_probs(n, folder='images/')
         se.plot_sampled_sizes(n, m, folder='images/')
 
-#    for dataset in small_n + big_n:
-#        se.visualize_predictions(dataset, folder='images/', exclude=['Official Tree SHAP'])
+    for dataset in small_n + big_n:
+        se.visualize_predictions(dataset, folder='images/', exclude=['Official Tree SHAP'])
 
     num_runs = 10
     for dataset in small_n + big_n:

@@ -97,9 +97,10 @@ def benchmark_table(results, filename=None, print_md=True, include_color=True):
 
 def one_big_table(results, filename):
     # Each column is a dataset
-    # There are five groups of rows: one for each method
+    # There are several groups of rows: one for each method
     # Each group has 4 rows: mean, 1st quartile, 2nd quartile, 3rd quartile
-    table = np.zeros((5*4, len(results)))
+    num_methods = len(results[list(results.keys())[0]])
+    table = np.zeros((num_methods*4, len(results)))
     for i, dataset in enumerate(results):
         for j, method in enumerate(results[dataset]):
             values = np.array(results[dataset][method][list(results[dataset][method].keys())[0]])

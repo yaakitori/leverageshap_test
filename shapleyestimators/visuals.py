@@ -60,7 +60,7 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
             ax.set_ylabel(name_lookup[y_name])
 
     num_labels = len(plt.legend().get_texts())
-    plt.legend(fancybox=True, bbox_to_anchor=(0,-.3), ncol=num_labels+1)
+    plt.legend(fancybox=True, bbox_to_anchor=(1,-.3), ncol=num_labels+1)
     if filename is not None:
         plt.savefig(filename, dpi=1000, bbox_inches='tight')
     else:

@@ -140,25 +140,32 @@ class NoisyModel:
     def get_sample_count(self):
         return self.sample_count
 
-def run_one_iteration(X, seed, dataset, model, sample_size, noise_std):
+def run_small_setup(baseline, explicand, model, true_shap_values):
+    linear_system = build_full_linear_system(baseline, explicand, model)
+    best_weighted_error = np.sum((linear_system['A'] @ true_shap_values - linear_system['b'])**2)
+    Aphi = linear_system['A'] @ true_shap_values
+    gamma = np.sum((Aphi - linear_system['b'])**2) / np.sum((Aphi)**2)    
+    normalized_gamma = gamma / np.sum((true_shap_values)**2)
+    # Round to 2 significant figures
+    normalized_gamma = float(f'{normalized_gamma:.2g}')
+    return {'A': linear_system['A'], 'b': linear_system['b'], 'best_weighted_error': best_weighted_error, 'normalized_gamma': normalized_gamma}
+
+def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs):
     baseline, explicand = load_input(X, seed=seed, is_synthetic=dataset=='Synthetic')
     n = X.shape[1]
     is_small = 2**n <= 1e7
     # Compute the true SHAP values (assuming tree model)
     true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, sample_size).flatten()
 
-    if is_small:
-        linear_system = build_full_linear_system(baseline, explicand, model)
-        best_weighted_error = np.sum((linear_system['A'] @ true_shap_values - linear_system['b'])**2)
-        Aphi = linear_system['A'] @ true_shap_values
-        gamma = np.sum((Aphi - linear_system['b'])**2) / np.sum((Aphi)**2)    
-        normalized_gamma = gamma / np.sum((true_shap_values)**2)
-        # Round to 2 significant figures
-        normalized_gamma = float(f'{normalized_gamma:.2g}')
+    small_setup = {}
      
     for estimator_name, estimator in estimators.items():        
         if estimator_name in ['Official Tree SHAP']:
             continue
+
+        results = read_file(dataset, estimator_name, 'sample_size', 'shap_error', {'noise': noise_std, 'n': n})
+        if results != {}:
+            if len(results[sample_size]) >= num_runs: continue
         noised_model = NoisyModel(model, noise_std)
         shap_values = estimator(baseline, explicand, noised_model, sample_size).flatten()
 
@@ -173,9 +180,11 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std):
             }
             dict['shap_error'] = ((shap_values - true_shap_values) ** 2).mean()
             if is_small:
-                weighted_error = np.sum((linear_system['A'] @ shap_values - linear_system['b'])**2)
-                dict['weighted_error'] = weighted_error / best_weighted_error
-                dict['gamma'] = normalized_gamma
+                if small_setup == {}:
+                    small_setup = run_small_setup(baseline, explicand, model, true_shap_values)
+                weighted_error = np.sum((small_setup['A'] @ shap_values - small_setup['b'])**2)
+                dict['weighted_error'] = weighted_error / small_setup['best_weighted_error'] 
+                dict['gamma'] = small_setup['normalized_gamma']
             f.write(str(dict) + '\n')
 
 def benchmark(num_runs, dataset, estimators, hyperparameter, hyperparameter_values, silent=False):              
@@ -190,5 +199,5 @@ def benchmark(num_runs, dataset, estimators, hyperparameter, hyperparameter_valu
     for run_idx in tqdm(range(num_runs), disable=silent):
         for hyperparameter_value in hyperparameter_values:
             config[hyperparameter] = hyperparameter_value
-            run_one_iteration(X, run_idx * num_runs, dataset, model, sample_size=config['sample_size'], noise_std=config['noise_std'])
+            run_one_iteration(X, run_idx * num_runs, dataset, model, sample_size=config['sample_size'], noise_std=config['noise_std'], num_runs=num_runs)
 
