@@ -34,9 +34,6 @@ def build_full_linear_system(baseline, explicand, model):
     v0 = model.predict(baseline)
     y = (vz - v0) / inv_sqrt_weights
     b = y - Z.sum(axis=1) * (v1 - v0) / n
-    print('b', b)
-    print('v1', v1)
-    print('v0', v0)
     return {'A': A, 'b': b}
 
 def get_dataset_size(dataset):
@@ -96,31 +93,41 @@ def compute_weighted_error(baseline, explicand, model, shap_values):
     v0 = model.predict(baseline)
     return np.sum(weights * (shap_values @ Z.T - (vz - v0)) ** 2)
 
-def visualize_predictions(dataset, folder='', exclude=[]):
+markers = ['o', 's', 'D', '^', 'v', '<', '>', 'p', 'P', '*', 'X', 'd', 'h', 'H', '+', 'x', '|', '_']
+
+def visualize_predictions(datasets, include_estimators, folder=''):
     plt.clf()
-    X, y = load_dataset(dataset)
-    n = X.shape[1]
-    num_samples = 5 * n
-    model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
-    model.fit(X, y)
-    baseline, explicand = load_input(X)
-    # 2 by 3 array of axes in matplotlib plot
     fig, axs = plt.subplots(2, 3, figsize=(10, 7))
-    true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, num_samples).flatten()
-    i = 0
-    for estimator_name, estimator in estimators.items():
-        if estimator_name in exclude:
-            continue
-        shap_values = estimator(baseline, explicand, model, num_samples).flatten()
-        m, b = np.polyfit(true_shap_values, shap_values, 1)
-        ax = axs[i // 3, i % 3]
-        ax.plot(true_shap_values, m * true_shap_values + b, color='green', linewidth=1, alpha=0.5)
-        ax.scatter(true_shap_values, shap_values, alpha=0.5, marker='.')
-        ax.set_title(estimator_name)
-        i += 1
+    for dataset_idx, dataset in enumerate(datasets):
+        X, y = load_dataset(dataset)
+        n = X.shape[1]
+        num_samples = 5 * n
+        model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
+        model.fit(X, y)
+        baseline, explicand = load_input(X)
+        # 2 by 3 array of axes in matplotlib plot
+        true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, num_samples).flatten()
+        # Ensure magnitude of true SHAP values is at most 1
+        normalizing_scale = np.max(np.abs(true_shap_values))
+        true_shap_values /= normalizing_scale
+        i = 0
+        for estimator_name, estimator in estimators.items():
+            if estimator_name not in include_estimators:
+                continue
+            shap_values = estimator(baseline, explicand, model, num_samples).flatten()
+            # Ensure magnitude of estimated SHAP values is at most 1
+            shap_values /= normalizing_scale
+            ax = axs[i // 3, i % 3]
+            ax.scatter(true_shap_values, shap_values, alpha=0.5, marker=markers[dataset_idx], label=dataset + ' (n=' + str(n) + ')')
+            ax.set_title(estimator_name)
+            i += 1
+    
+    for ax in axs.flatten():
+        # Plot the line y = x
+        ax.plot([ax.get_xlim()[0], ax.get_xlim()[1]], [ax.get_xlim()[0], ax.get_xlim()[1]], color='green', alpha=0.5, linestyle='dashed')
     
     # Set title for whole plot
-    fig.suptitle(rf'{dataset} Dataset ($n = {n}$)', fontsize=20)
+    fig.suptitle(rf'Detailed Estimator Performance', fontsize=20)
     # Set x label for bottom row
     for ax in axs[1]:
         ax.set_xlabel(r'True Shapley Values ($\phi$)')
@@ -128,7 +135,8 @@ def visualize_predictions(dataset, folder='', exclude=[]):
     for ax in axs[:,0]:
         ax.set_ylabel(r'Predicted Shapley Values ($\tilde{\phi}$)')     
 
-    filename = f'{folder}/{dataset}_detailed.pdf'
+    plt.legend(fancybox=True, bbox_to_anchor=(1,-.3), ncol=4)
+    filename = f'{folder}/detailed.pdf'
     plt.savefig(filename, bbox_inches='tight', dpi=300)
     plt.clf()
 
@@ -169,7 +177,7 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs)
             continue
 
         results = read_file(dataset, estimator_name, 'sample_size', 'shap_error', {'noise': noise_std, 'n': n})
-        if results != {}:
+        if results != {} and sample_size in results:
             if len(results[sample_size]) >= num_runs: continue
         noised_model = NoisyModel(model, noise_std)
         shap_values = estimator(baseline, explicand, noised_model, sample_size).flatten()
@@ -189,7 +197,6 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs)
                     small_setup = run_small_setup(baseline, explicand, model, true_shap_values)
                 weighted_error = np.sum((small_setup['A'] @ shap_values - small_setup['b'])**2)
                 dict['weighted_error'] = weighted_error / small_setup['best_weighted_error'] 
-                dict['gamma'] = small_setup['normalized_gamma']
             f.write(str(dict) + '\n')
 
 def benchmark(num_runs, dataset, estimators, hyperparameter, hyperparameter_values, silent=False):              
@@ -236,8 +243,8 @@ def build_gamma_labels(n, alpha):
     indices = np.sum(2**np.arange(X.shape[1]) * X, axis=1).astype(int)
     correspondence = {0:0, 2**n-1:-1}
     for i in range(2**n-2):
-        correspondence[indices[i]] = i
-    print('indices', indices)
+        correspondence[indices[i]] = i + 1
+
     binary_Z1_norm = np.sum(binary_Z, axis=1)
     inv_sqrt_weights = np.sqrt(binary_Z1_norm * (n - binary_Z1_norm) * scipy.special.binom(n, binary_Z1_norm))
     Z = 1 / inv_sqrt_weights[:, np.newaxis] * binary_Z
@@ -249,14 +256,18 @@ def build_gamma_labels(n, alpha):
 
     # The last column of Q is orthogonal to all the columns of A
     # if A has full rank and is not square
-    r = Q[:, -1]
+    col_not_in_span = Q[:, -1]
+    col_not_in_span = col_not_in_span / np.linalg.norm(col_not_in_span)
     
     # Check that r is orthogonal to the columns of A
-    assert np.allclose(A.T @ r, 0)
+    assert np.allclose(A.T @ col_not_in_span, 0)
 
-    # Construct b as (1-alpha) * a column of A + alpha * r
-    normalized_first_col = A[:, 0] / np.linalg.norm(A[:, 0])
-    b = (1 - alpha) * normalized_first_col + alpha * r
+    # Construct b as (1-alpha) * a column in span of A + alpha * a column not in span of A
+#    xstar = np.random.randn(n)
+#    col_in_span = A @ xstar
+    col_in_span = A[:, 0]
+    col_in_span = col_in_span / np.linalg.norm(col_in_span)
+    b = (1 - alpha) * col_in_span + alpha * col_not_in_span
 
     # Convert from b to y
     v1 = 1
@@ -274,13 +285,10 @@ def build_gamma_labels(n, alpha):
     best_weighted_error = np.sum((A @ true_shap_values - b)**2)
 
     gamma = np.sum((A @ true_shap_values - b)**2) / np.sum((A @ true_shap_values)**2)
-    print(f'Gamma: {gamma}')
-    print('b', b)
 
     return {'v': v, 'true_shap_values': true_shap_values, 'best_weighted_error': best_weighted_error, 'correspondence': correspondence}
 
-def benchmark_gamma(num_runs, n, estimators, silent=False):
-    sample_size = 1000
+def benchmark_gamma(num_runs, n, estimators, sample_size, silent=False):
     baseline = np.zeros((1, n))
     explicand = np.ones((1, n))
     for run_idx in tqdm(range(num_runs), disable=silent):
@@ -320,5 +328,5 @@ def benchmark_gamma(num_runs, n, estimators, silent=False):
                             small_setup = run_small_setup(baseline, explicand, model, gamma_labels['true_shap_values'])
                         weighted_error = np.sum((small_setup['A'] @ shap_values - small_setup['b'])**2)
                         dict['weighted_error'] = weighted_error / gamma_labels['best_weighted_error'] 
-                        dict['gamma'] = small_setup['normalized_gamma']
+                        dict['gamma'] = small_setup['gamma']
                     f.write(str(dict) + '\n')

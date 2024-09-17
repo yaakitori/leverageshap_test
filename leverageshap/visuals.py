@@ -21,7 +21,7 @@ name_lookup = {
     'gamma': r'$\gamma$',# $\left( \frac{\| {b} \|_2^2}{\| {A} {\phi} \|_2^2} \right)$',
 }
 
-def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y=True, plot_mean=True):
+def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y=True, plot_mean=True, estimators=estimators):
     plt.clf()
     num_datasets = len(results)
     num_rows = 1 if num_datasets <= 4 else 2
@@ -35,6 +35,7 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
             ax = axs[i] if num_datasets > 1 else axs
 
         for estimator_name, results_by_estimator in results_by_dataset.items():
+            if estimator_name not in estimators: continue
             x_values = list(results_by_estimator.keys())
             x_values = sorted(x_values)
             y_mean = [np.mean(results_by_estimator[x]) for x in x_values]
@@ -47,6 +48,8 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
                 ax.plot(x_values, y_median, label=estimator_name, linestyle=linestyles_lookup[estimator_name], color=cbcolors_lookup[estimator_name])
                 ax.fill_between(x_values, y_lower, y_upper, alpha=0.2, color=cbcolors_lookup[estimator_name])
 
+        if '_' in dataset:
+            dataset, _ = dataset.split('_')
         ax.set_title(rf'{dataset} $(n = {n})$')
         if log_x: ax.set_xscale('log')
         if log_y: ax.set_yscale('log') 
