@@ -24,6 +24,11 @@ def official_shapley_sampling(baseline, explicand, model, num_samples):
     return shap_values
 
 def official_tree_shap(baseline, explicand, model, num_samples):
+    # Suppress warning only for this function
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
     explainer = shap.TreeExplainer(model, baseline)
     shap_values = explainer.shap_values(explicand)
+    # Re-enable warnings
+    warnings.filterwarnings("default", category=UserWarning)
     return shap_values

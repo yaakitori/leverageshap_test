@@ -21,7 +21,7 @@ name_lookup = {
     'gamma': r'$\gamma$',# $\left( \frac{\| {b} \|_2^2}{\| {A} {\phi} \|_2^2} \right)$',
 }
 
-def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y=True, plot_mean=True, estimators=estimators):
+def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y=True, plot_mean=True, include_estimators=estimators):
     plt.clf()
     num_datasets = len(results)
     num_rows = 1 if num_datasets <= 4 else 2
@@ -35,7 +35,7 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
             ax = axs[i] if num_datasets > 1 else axs
 
         for estimator_name, results_by_estimator in results_by_dataset.items():
-            if estimator_name not in estimators: continue
+            if estimator_name not in include_estimators: continue
             x_values = list(results_by_estimator.keys())
             x_values = sorted(x_values)
             y_mean = [np.mean(results_by_estimator[x]) for x in x_values]
@@ -103,20 +103,28 @@ def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False)
         plt.show()
     plt.close()
 
-def plot_probs(n, folder=None):
-    s = np.arange(1, n)
-    kernel_weight = 1 / (s * (n - s))
-    kernel_prob = kernel_weight / np.sum(kernel_weight)
-    leverage_weight = np.ones_like(s)
-    leverage_prob = leverage_weight / np.sum(leverage_weight)    
-    plt.plot(s, kernel_prob, label='KernelSHAP', color='b')
-    plt.plot(s, leverage_prob, label='LeverageSHAP', linestyle='--', color='g')
-    plt.legend()
-    plt.title('Kernel and Leverage Probability Distributions')
-    plt.xlabel('Subset Size')
-    plt.yscale('log')
-    plt.ylabel('Probability')
-    filename = f'{folder}sampling_prob_{n}.pdf'
+def plot_probs(ns, folder=None):
+    plt.clf()
+    # Set figsize
+    # Three subplots
+    fig, axs = plt.subplots(1, 3, figsize=(12, 3))
+    ns = [10, 100, 1000]
+    for idx, n in enumerate(ns):
+        s = np.arange(1, n)
+        kernel_weight = 1 / (s * (n - s))
+        kernel_prob = kernel_weight / np.sum(kernel_weight)
+        leverage_weight = np.ones_like(s)
+        leverage_prob = leverage_weight / np.sum(leverage_weight)
+        axs[idx].plot(s, kernel_prob, label='Kernel SHAP', color='b')
+        axs[idx].plot(s, leverage_prob, label='Leverage SHAP', linestyle='--', color='g')
+        axs[idx].set_title(f'n = {n}')
+        axs[idx].set_yscale('log')
+        axs[idx].set_xlabel('Subset Size')
+        if idx == 0:
+            axs[idx].set_ylabel('Probability')
+    plt.legend(loc='center left', bbox_to_anchor=(0, -.3), ncol=2)
+    plt.suptitle('Kernel SHAP and Leverage SHAP Probability Distributions', y=1.05, fontsize=16)
+    filename = f'{folder}sampling_prob.pdf'
     plt.savefig(filename, dpi=1000, bbox_inches='tight')
     plt.close()
 

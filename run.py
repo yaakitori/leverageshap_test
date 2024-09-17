@@ -17,26 +17,25 @@ def get_hyperparameter_values(name):
 #log = logging.getLogger('shap')
 #logging.basicConfig(level=logging.DEBUG)
 
-include_estimators = ['KernelSHAP', 'KernelSHAP Paired', 'Official KernelSHAP', 'LeverageSHAP', 'LeverageSHAP Paired', 'LeverageSHAP Bernoulli']
+ablation_estimators = ['Kernel SHAP', 'Official Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Paired', 'Leverage SHAP wo Bernoulli, Paired']
+
+main_estimators = ['Kernel SHAP', 'Official Kernel SHAP', 'Leverage SHAP']
 
 datasets = small_n + big_n
 
 if True:
 
-    #m = 1000
-    #for n in [10, 100, 1000]:
-    #    ls.plot_probs(n, folder='images/')
-    #    ls.plot_sampled_sizes(n, m, folder='images/')
+    ls.plot_probs([10,100,1000], folder='images/')
 
+    ls.visualize_predictions(datasets, main_estimators, filename='images/main_detailed.pdf')
+    ls.visualize_predictions(datasets, ablation_estimators, filename='images/ablation_detailed.pdf')
 
-    ls.visualize_predictions(datasets, include_estimators, folder='images/')
-
-#    num_runs = 10
-#    for dataset in small_n + big_n:
-#        print(dataset)
-#        for hyperparameter in ['sample_size', 'noise_std']:
-#            print(hyperparameter)
-#            ls.benchmark(num_runs, dataset, ls.estimators, hyperparameter, get_hyperparameter_values(hyperparameter), silent=False)
+    num_runs = 10
+    for dataset in small_n + big_n:
+        print(dataset)
+        for hyperparameter in ['sample_size', 'noise_std']:
+            print(hyperparameter)
+            ls.benchmark(num_runs, dataset, ls.estimators, hyperparameter, get_hyperparameter_values(hyperparameter), silent=False)
 
 # Plots
 
@@ -45,13 +44,15 @@ for y_name in ['shap_error', 'weighted_error']:
     x_name = 'sample_size'
     constraints = {'noise': 0}
     results = ls.load_results(small_n + big_n, x_name, y_name, constraints)
-    ls.plot_with_subplots(results, x_name, y_name, filename=f'images/{x_name}-{y_name}.pdf', log_x=True, log_y=y_name == 'shap_error')
+    ls.plot_with_subplots(results, x_name, y_name, filename=f'images/main_{x_name}-{y_name}.pdf', log_x=True, log_y=y_name == 'shap_error', include_estimators=main_estimators)
+    ls.plot_with_subplots(results, x_name, y_name, filename=f'images/ablation_{x_name}-{y_name}.pdf', log_x=True, log_y=y_name == 'shap_error', include_estimators=ablation_estimators)
 
     # Performance by noise level
     x_name = 'noise'
     constraints = {'sample_size': 1000}
     results = ls.load_results(small_n + big_n, x_name, y_name, constraints)
-    ls.plot_with_subplots(results, x_name, y_name, filename=f'images/{x_name}-{y_name}.pdf', log_x=True, log_y=y_name == 'shap_error')
+    ls.plot_with_subplots(results, x_name, y_name, filename=f'images/main_{x_name}-{y_name}.pdf', log_x=True, log_y=y_name == 'shap_error', include_estimators=main_estimators)
+    ls.plot_with_subplots(results, x_name, y_name, filename=f'images/ablation_{x_name}-{y_name}.pdf', log_x=True, log_y=y_name == 'shap_error', include_estimators=ablation_estimators)
 
 # Tables
 for y_name in ['shap_error', 'weighted_error']:

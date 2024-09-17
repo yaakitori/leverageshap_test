@@ -95,9 +95,10 @@ def compute_weighted_error(baseline, explicand, model, shap_values):
 
 markers = ['o', 's', 'D', '^', 'v', '<', '>', 'p', 'P', '*', 'X', 'd', 'h', 'H', '+', 'x', '|', '_']
 
-def visualize_predictions(datasets, include_estimators, folder=''):
+def visualize_predictions(datasets, include_estimators, filename):
     plt.clf()
-    fig, axs = plt.subplots(2, 3, figsize=(10, 7))
+    row_num = 2 if len(include_estimators) > 3 else 1
+    fig, axs = plt.subplots(row_num, 3, figsize=(10, 3 * row_num))
     for dataset_idx, dataset in enumerate(datasets):
         X, y = load_dataset(dataset)
         n = X.shape[1]
@@ -117,26 +118,33 @@ def visualize_predictions(datasets, include_estimators, folder=''):
             shap_values = estimator(baseline, explicand, model, num_samples).flatten()
             # Ensure magnitude of estimated SHAP values is at most 1
             shap_values /= normalizing_scale
-            ax = axs[i // 3, i % 3]
+            if row_num == 1:
+                ax = axs[i]
+            else:
+                ax = axs[i // 3, i % 3]
             ax.scatter(true_shap_values, shap_values, alpha=0.5, marker=markers[dataset_idx], label=dataset + ' (n=' + str(n) + ')')
             ax.set_title(estimator_name)
             i += 1
     
     for ax in axs.flatten():
         # Plot the line y = x
-        ax.plot([ax.get_xlim()[0], ax.get_xlim()[1]], [ax.get_xlim()[0], ax.get_xlim()[1]], color='green', alpha=0.5, linestyle='dashed')
-    
-    # Set title for whole plot
-    fig.suptitle(rf'Detailed Estimator Performance', fontsize=20)
+        ax.plot([ax.get_xlim()[0], ax.get_xlim()[1]], [ax.get_xlim()[0], ax.get_xlim()[1]], color='gray', alpha=0.5)
+
     # Set x label for bottom row
-    for ax in axs[1]:
-        ax.set_xlabel(r'True Shapley Values ($\phi$)')
-    # Set y label for left column
-    for ax in axs[:,0]:
-        ax.set_ylabel(r'Predicted Shapley Values ($\tilde{\phi}$)')     
+    if row_num == 2:
+        for ax in axs[1]:
+            ax.set_xlabel(r'True Shapley Values ($\phi$)')
+        # Set y label for left column
+        for ax in axs[:,0]:
+            ax.set_ylabel(r'Predicted Shapley Values ($\tilde{\phi}$)')     
+    else:
+        for i, ax in enumerate(axs):
+            if i == 0:
+                ax.set_ylabel(r'Predicted Shapley Values ($\tilde{\phi}$)')
+            ax.set_xlabel(r'True Shapley Values ($\phi$)')
+            
 
     plt.legend(fancybox=True, bbox_to_anchor=(1,-.3), ncol=4)
-    filename = f'{folder}/detailed.pdf'
     plt.savefig(filename, bbox_inches='tight', dpi=300)
     plt.clf()
 
@@ -183,6 +191,9 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs)
         shap_values = estimator(baseline, explicand, noised_model, sample_size).flatten()
 
         filename = f'output/{dataset}_{estimator_name}.csv'
+        if not os.path.exists(filename):
+            with open(filename, 'w') as f:
+                f.write('')
 
         with open(filename, 'a') as f:
             dict = {
