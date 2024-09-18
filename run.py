@@ -30,7 +30,7 @@ if True:
     ls.visualize_predictions(datasets, main_estimators, filename='images/main_detailed.pdf')
     ls.visualize_predictions(datasets, ablation_estimators, filename='images/ablation_detailed.pdf')
 
-    num_runs = 10
+    num_runs = 100
     for dataset in small_n + big_n:
         print(dataset)
         for hyperparameter in ['sample_size', 'noise_std']:

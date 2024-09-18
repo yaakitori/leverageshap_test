@@ -299,7 +299,7 @@ def build_gamma_labels(n, alpha):
 
     return {'v': v, 'true_shap_values': true_shap_values, 'best_weighted_error': best_weighted_error, 'correspondence': correspondence}
 
-def benchmark_gamma(num_runs, n, estimators, sample_size, silent=False):
+def benchmark_gamma(num_runs, n, include_estimators, sample_size, silent=False):
     baseline = np.zeros((1, n))
     explicand = np.ones((1, n))
     for run_idx in tqdm(range(num_runs), disable=silent):
@@ -315,7 +315,7 @@ def benchmark_gamma(num_runs, n, estimators, sample_size, silent=False):
             dataset = 'Synthetic_' + str(n)
             
             for estimator_name, estimator in estimators.items():
-                if estimator_name in ['Official Tree SHAP', 'Official Kernel SHAP']:
+                if estimator_name not in include_estimators:
                     continue
                 model = SyntheticModel(gamma_labels['v'], gamma_labels['correspondence'])
                 results = read_file(dataset, estimator_name, 'alpha', 'shap_error', {'n': n})

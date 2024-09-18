@@ -6,9 +6,8 @@ main_estimators = ['Kernel SHAP', 'Official Kernel SHAP', 'Leverage SHAP']
 
 ns = [10, 12, 14, 16]
 sample_size = 500
-num_runs = 10
+num_runs = 100
 for n in ns:
-    continue
     ls.benchmark_gamma(num_runs, n, ablation_estimators, sample_size=sample_size, silent=False)
 
 # Plots
