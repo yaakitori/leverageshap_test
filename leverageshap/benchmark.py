@@ -65,7 +65,11 @@ def read_file(dataset, estimator, x_name, y_name, constraints={}):
 
 def load_results(datasets, x_name, y_name, constraints, estimator_names=estimators.keys()):
     results_by_dataset = {}
+    original_sample_size = constraints.get('sample_size', 1)
     for dataset in datasets:
+        n = get_dataset_size(dataset)
+        if 'sample_size' in constraints:
+            constraints['sample_size'] = int(original_sample_size * n)
         results_by_estimator = {}
         for estimator_name in estimator_names:
             if estimator_name == 'Official Tree SHAP':
@@ -218,9 +222,11 @@ def benchmark(num_runs, dataset, estimators, hyperparameter, hyperparameter_valu
     model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
     model.fit(X, y)
 
-    config = {'sample_size': 1000, 'noise_std' : 0}
+    config = {'sample_size': 10*n, 'noise_std' : 0}
     for run_idx in tqdm(range(num_runs), disable=silent):
         for hyperparameter_value in hyperparameter_values:
+            if hyperparameter == 'sample_size':
+                hyperparameter_value = int(hyperparameter_value * n)
             config[hyperparameter] = hyperparameter_value
             run_one_iteration(X, run_idx * num_runs, dataset, model, sample_size=config['sample_size'], noise_std=config['noise_std'], num_runs=num_runs)
 

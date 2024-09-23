@@ -21,7 +21,7 @@ name_lookup = {
     'gamma': r'$\gamma$',# $\left( \frac{\| {b} \|_2^2}{\| {A} {\phi} \|_2^2} \right)$',
 }
 
-def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y=True, plot_mean=True, include_estimators=estimators):
+def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y=True, plot_mean=False, include_estimators=estimators):
     plt.clf()
     num_datasets = len(results)
     num_rows = 1 if num_datasets <= 4 else 2
@@ -57,9 +57,6 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
             ax.axvline(x=2**n, color='r', linestyle='solid')
             ax.annotate(r'$2^n$', xy=(2**n, ax.get_ylim()[1]), xytext=(2,-10), textcoords='offset points', color='r')
 
-        if num_rows > 1 and i < 4:
-            # Remove x-ticks
-            ax.set_xticks([])
         if num_rows == 1 or i >= 4:
             ax.set_xlabel(name_lookup[x_name])
         if i % 4 == 0:
