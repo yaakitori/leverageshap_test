@@ -23,7 +23,7 @@ main_estimators = ['Kernel SHAP', 'Official Kernel SHAP', 'Leverage SHAP']
 
 datasets = small_n + big_n
 
-if True:
+if False:
 
     ls.plot_probs([10,100,1000], folder='images/')
 

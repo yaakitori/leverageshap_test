@@ -62,6 +62,7 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
         if i % 4 == 0:
             ax.set_ylabel(name_lookup[y_name])
 
+    plt.tight_layout()
     num_labels = len(plt.legend().get_texts())
     plt.legend(fancybox=True, bbox_to_anchor=(1,-.3), ncol=num_labels+1)
     if filename is not None:
