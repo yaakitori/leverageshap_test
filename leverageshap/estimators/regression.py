@@ -100,7 +100,7 @@ class RegressionEstimator:
             return np.sum(expected)
         # Efficiently find C with binary search
         L = 1
-        R = scipy.special.binom(self.n, self.n // 2)
+        R = scipy.special.binom(self.n, self.n // 2) * self.n ** 2
         while round(expected_samples(C)) != m:
             if expected_samples(C) < m: L = C
             else: R = C
@@ -178,8 +178,8 @@ def leverage_shap(baseline, explicand, model, num_samples):
     estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=True, leverage_sampling=True, bernoulli_sampling=True)
     return estimator.compute()
 
-def leverage_shap_wo_paired(baseline, explicand, model, num_samples):
-    estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=False, leverage_sampling=True, bernoulli_sampling=True)
+def leverage_shap_wo_bernoulli(baseline, explicand, model, num_samples):
+    estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=True, leverage_sampling=True, bernoulli_sampling=False)
     return estimator.compute()
 
 def leverage_shap_wo_bernoulli_paired(baseline, explicand, model, num_samples):
