@@ -178,10 +178,6 @@ def leverage_shap(baseline, explicand, model, num_samples):
     estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=True, leverage_sampling=True, bernoulli_sampling=True)
     return estimator.compute()
 
-def optimized_kernel_shap(baseline, explicand, model, num_samples):
-    estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=False, leverage_sampling=True, bernoulli_sampling=True)
-    return estimator.compute()
-
 def leverage_shap_wo_paired(baseline, explicand, model, num_samples):
     estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=False, leverage_sampling=True, bernoulli_sampling=True)
     return estimator.compute()

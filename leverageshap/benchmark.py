@@ -63,12 +63,12 @@ def read_file(dataset, estimator, x_name, y_name, constraints={}):
                     pass
     return results
 
-def load_results(datasets, x_name, y_name, constraints, estimator_names=estimators.keys()):
+def load_results(datasets, x_name, y_name, constraints, estimator_names=estimators.keys(), is_actual_sample_size=False):
     results_by_dataset = {}
     original_sample_size = constraints.get('sample_size', 1)
     for dataset in datasets:
         n = get_dataset_size(dataset)
-        if 'sample_size' in constraints:
+        if 'sample_size' in constraints and not is_actual_sample_size:
             constraints['sample_size'] = int(original_sample_size * n)
         results_by_estimator = {}
         for estimator_name in estimator_names:
