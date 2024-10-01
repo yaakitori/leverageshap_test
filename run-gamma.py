@@ -1,13 +1,13 @@
 import leverageshap as ls
 
-ablation_estimators = ['Kernel SHAP', 'Official Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired']
+ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired']
 
-main_estimators = ['Kernel SHAP', 'Official Kernel SHAP', 'Leverage SHAP']
+main_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
 
 ns = [10, 12, 14, 16]
 sample_size = 500
 num_runs = 100
-if True:
+if False:
     for n in ns:
         ls.benchmark_gamma(num_runs, n, ablation_estimators, sample_size=sample_size, silent=False)
 

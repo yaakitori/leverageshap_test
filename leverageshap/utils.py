@@ -121,7 +121,7 @@ def one_big_table_old(results, filename, include_color=True):
         f.write('\\resizebox{\\linewidth}{!}{ \n')
         f.write('\\begin{tabular} {lcccc||cccc||cccc||cccc||cccc||cccc}\n')
         f.write('\\toprule\n')
-        f.write('& \\multicolumn{4}{c}{\\textbf{Kernel SHAP}} & \\multicolumn{4}{c}{\\textbf{Kernel SHAP Paired}} & \\multicolumn{4}{c}{\\textbf{Official Kernel SHAP}} & \\multicolumn{4}{c}{\\textbf{Leverage SHAP}} & \\multicolumn{4}{c}{\\textbf{Leverage SHAP Paired}} \\\\ \n')
+        f.write('& \\multicolumn{4}{c}{\\textbf{Kernel SHAP}} & \\multicolumn{4}{c}{\\textbf{Kernel SHAP Paired}} & \\multicolumn{4}{c}{\\textbf{Optimized Kernel SHAP}} & \\multicolumn{4}{c}{\\textbf{Leverage SHAP}} & \\multicolumn{4}{c}{\\textbf{Leverage SHAP Paired}} \\\\ \n')
         cols = ['Mean', '1st', '2nd', '3rd']
         colnames = ' & '.join(['\\textbf{' + col + '}' for col in cols])
         f.write(f'\\textbf{{Approach}} & {colnames} & {colnames} & {colnames} & {colnames} & {colnames} \\\\ \\midrule \n')

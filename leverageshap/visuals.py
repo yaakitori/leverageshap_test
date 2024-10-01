@@ -113,8 +113,9 @@ def plot_probs(ns, folder=None):
         kernel_prob = kernel_weight / np.sum(kernel_weight)
         leverage_weight = np.ones_like(s)
         leverage_prob = leverage_weight / np.sum(leverage_weight)
-        axs[idx].plot(s, kernel_prob, label='Kernel SHAP', color=cbcolors_lookup['Kernel SHAP'], linestyle=linestyles_lookup['Kernel SHAP'])
-        axs[idx].plot(s, leverage_prob, label='Leverage SHAP', linestyle=linestyles_lookup['Leverage SHAP'], color=cbcolors_lookup['Leverage SHAP'])
+        # Incrase line width
+        axs[idx].plot(s, kernel_prob, label='Kernel SHAP', color=cbcolors_lookup['Kernel SHAP'], linestyle=linestyles_lookup['Kernel SHAP'], linewidth=3)
+        axs[idx].plot(s, leverage_prob, label='Leverage SHAP', linestyle=linestyles_lookup['Leverage SHAP'], color=cbcolors_lookup['Leverage SHAP'], linewidth=3)
         axs[idx].set_title(f'n = {n}')
         axs[idx].set_yscale('log')
         axs[idx].set_xlabel('Subset Size')

@@ -8,7 +8,7 @@ import scipy
 
 estimators = {
     'Kernel SHAP': kernel_shap,
-    'Official Kernel SHAP': official_kernel_shap,
+    'Optimized Kernel SHAP': official_kernel_shap,
     'Leverage SHAP': leverage_shap,
     'Kernel SHAP Paired': kernel_shap_paired,
     'Leverage SHAP wo Bernoulli': leverage_shap_wo_bernoulli,
