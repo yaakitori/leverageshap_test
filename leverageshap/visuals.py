@@ -15,7 +15,7 @@ cbcolors_lookup = {name: cbcolors[i % len(cbcolors)] for i, name in enumerate(es
 
 name_lookup = {
     'shap_error': r'Error in $\ell_2$-norm', #r'Shapley Error $\left(\| \tilde{{\phi}} - {\phi}\|_2^2\right)$',
-    'weighted_error': r'Error in Linear Objective',# $\left( \frac{\| {A} \tilde{{\phi}} - {b} \|_2^2}{\| {A} {\phi} - {b} \|_2^2} \right)$',
+    'weighted_error': r'Error in Objective',# $\left( \frac{\| {A} \tilde{{\phi}} - {b} \|_2^2}{\| {A} {\phi} - {b} \|_2^2} \right)$',
     'sample_size': r'Sample Size $(m)$',
     'noise': r'Standard Deviation of Noise $(\sigma)$',
     'gamma': r'$\gamma$',# $\left( \frac{\| {b} \|_2^2}{\| {A} {\phi} \|_2^2} \right)$',
@@ -26,7 +26,7 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
     num_datasets = len(results)
     num_rows = 1 if num_datasets <= 4 else 2
     dims = (num_rows, num_datasets // num_rows + num_datasets % num_rows)
-    fig, axs = plt.subplots(*dims, figsize=(num_datasets /num_rows * 4, 3 * num_rows))
+    fig, axs = plt.subplots(*dims, figsize=(num_datasets /num_rows * 3, 2.5 * num_rows))
     for i, (dataset, results_by_dataset) in enumerate(results.items()):
         n = get_dataset_size(dataset)
         if num_datasets > 4:
@@ -64,7 +64,9 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
 
     plt.tight_layout()
     num_labels = len(plt.legend().get_texts())
-    plt.legend(fancybox=True, bbox_to_anchor=(1,-.3), ncol=num_labels+1)
+    num_legend_cols = num_labels +1 if num_labels <= 4 else num_labels // 2
+    # Increase legend font size
+    plt.legend(fancybox=True, bbox_to_anchor=(1,-.4), ncol=num_legend_cols, fontsize=12)
     if filename is not None:
         plt.savefig(filename, dpi=1000, bbox_inches='tight')
     else:
@@ -105,7 +107,7 @@ def plot_probs(ns, folder=None):
     plt.clf()
     # Set figsize
     # Three subplots
-    fig, axs = plt.subplots(1, 3, figsize=(12, 3))
+    fig, axs = plt.subplots(1, 3, figsize=(10, 2))
     ns = [10, 100, 1000]
     for idx, n in enumerate(ns):
         s = np.arange(1, n)
@@ -121,8 +123,8 @@ def plot_probs(ns, folder=None):
         axs[idx].set_xlabel('Subset Size')
         if idx == 0:
             axs[idx].set_ylabel('Probability')
-    plt.legend(loc='center left', bbox_to_anchor=(0, -.3), ncol=2)
-    plt.suptitle('Kernel SHAP and Leverage SHAP Probability Distributions', y=1.05, fontsize=16)
+    plt.legend(loc='center left', bbox_to_anchor=(-.4, -.5), ncol=2)
+    plt.suptitle('Kernel SHAP and Leverage SHAP Probability Distributions', y=1.2, fontsize=16)
     filename = f'{folder}sampling_prob.pdf'
     plt.savefig(filename, dpi=1000, bbox_inches='tight')
     plt.close()
