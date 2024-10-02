@@ -124,7 +124,7 @@ def plot_probs(ns, folder=None):
         if idx == 0:
             axs[idx].set_ylabel('Probability')
     plt.legend(loc='center left', bbox_to_anchor=(-.4, -.5), ncol=2)
-    plt.suptitle('Kernel SHAP and Leverage SHAP Probability Distributions', y=1.2, fontsize=16)
+    #plt.suptitle('Kernel SHAP and Leverage SHAP Probability Distributions', y=1.2, fontsize=16)
     filename = f'{folder}sampling_prob.pdf'
     plt.savefig(filename, dpi=1000, bbox_inches='tight')
     plt.close()

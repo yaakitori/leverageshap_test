@@ -25,6 +25,8 @@ datasets = small_n + big_n
 
 ls.plot_probs([10,100,1000], folder='images/')
 
+assert False
+
 if False:
 
     ls.visualize_predictions(datasets, main_estimators, filename='images/main_detailed.pdf')
