@@ -2,7 +2,7 @@ import numpy as np
 import itertools
 import math
 
-n = 4
+n = 2
 
 # set the seed
 gen = np.random.default_rng(2)
@@ -72,6 +72,7 @@ v = {}
 
 for idx in range(2**n):
     subset = tuple([j for j in range(n) if (idx >> j) & 1])
+    if subset == (): v[subset] = 0
     v[subset] = gen.random()
 
 def compute_next_v(v, n, epsilon):
