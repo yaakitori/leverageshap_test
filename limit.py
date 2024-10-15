@@ -2,7 +2,7 @@ import numpy as np
 import itertools
 import math
 
-n = 2
+n = 6
 
 # set the seed
 gen = np.random.default_rng(2)
@@ -15,7 +15,7 @@ def compute_shapley_values(n, v):
     shap_values = np.zeros(n)
     for i in range(n):
         valid_items = [j for j in range(n) if j != i]
-        for set_size in range(1, n):
+        for set_size in range(n):
             # Generate all subsets of size set_size
             weight = 1 / math.comb(n - 1, set_size)
             for subset in itertools.combinations(valid_items, set_size):
@@ -27,7 +27,7 @@ def compute_shapley_values(n, v):
     return shap_values / n
 
 shap_values = compute_shapley_values(n, v)
-#print(shap_values)
+print(shap_values)
 #print()
 
 non_identity = np.zeros((2**n, 2**n))
@@ -62,7 +62,9 @@ for j in range(50):
 
 #print(next_v)
 limit_values = get_single_values(next_v, n)
-#print(limit_values)
+print(limit_values)
+print()
+print()
 
 # Approach without matrices
 
@@ -72,8 +74,11 @@ v = {}
 
 for idx in range(2**n):
     subset = tuple([j for j in range(n) if (idx >> j) & 1])
-    if subset == (): v[subset] = 0
     v[subset] = gen.random()
+    if len(subset) == 0: v[subset] = 0
+
+#n = 2
+#v = {(): 0, (0,): 1, (1,): 3, (0, 1): 5}
 
 def compute_next_v(v, n, epsilon):
     next_v = {}
@@ -96,7 +101,7 @@ def compute_shapley_values_dict(n, v):
     shap_values = np.zeros(n)
     for i in range(n):
         valid_items = [j for j in range(n) if j != i]
-        for set_size in range(1, n):
+        for set_size in range(n):
             # Generate all subsets of size set_size
             weight = 1 / math.comb(n - 1, set_size)
             for subset in itertools.combinations(valid_items, set_size):
@@ -115,12 +120,11 @@ def extract_single_values(v, n):
     return single
 
 print(compute_shapley_values_dict(n, v))
-print()
 epsilon = 1/(2*n)
 next_v = v
-for i in range(10):
+for i in range(100):
     next_v = compute_next_v(next_v, n, tau)
-    print(extract_single_values(next_v, n))
+print(extract_single_values(next_v, n))
 
         
         
