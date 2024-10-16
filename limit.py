@@ -126,5 +126,62 @@ for i in range(100):
     next_v = compute_next_v(next_v, n, tau)
 print(extract_single_values(next_v, n))
 
+# # # # # Finding Inverse # # # # #
         
-        
+n = 4
+P = np.zeros((2**n-1, 2**n-1))
+for idx in range(2**n-1):
+    subset = [j for j in range(n) if (idx + 1 >> j) & 1]
+    #print(subset)
+    # for all supersets of subset
+    remaining = [j for j in range(n) if j not in subset] 
+    for length in range(len(remaining)+1):
+        for new_subset in itertools.combinations(remaining, length):
+            new_subset = subset + list(new_subset)
+            new_subset_idx = sum([2**i for i in new_subset])
+            P[new_subset_idx-1, idx] = 1
+
+#print(P)
+P_inv = np.linalg.inv(P)
+print()
+#print(P_inv)
+
+# Copy P
+maybe_P_inv = P.copy()
+for col_idx in range(2**n-1):
+    col_subset = [j for j in range(n) if (col_idx + 1 >> j) & 1]
+    for row_idx in range(col_idx, 2**n-1):
+        row_subset = [j for j in range(n) if (row_idx + 1 >> j) & 1]
+        if P[row_idx, col_idx] == 1:
+            if (len(row_subset) % 2) != (len(col_subset) % 2):
+                maybe_P_inv[row_idx, col_idx] = -1
+            else:
+                maybe_P_inv[row_idx, col_idx] = 1
+
+assert np.allclose(np.abs(P_inv), P)
+
+# Convert to dataframe and label each row and column with the corresponding subset
+
+import pandas as pd
+
+def print_label(P):
+    df = pd.DataFrame(P)
+
+    def subset_to_string(subset):
+        return str([j for j in subset])
+
+    for idx in range(2**n-1):
+        subset = [j for j in range(n) if (idx + 1 >> j) & 1]
+        df = df.rename(index={idx: subset_to_string(subset)})
+        df = df.rename(columns={idx: subset_to_string(subset)})
+
+    print(df)
+
+print_label(P)
+print()
+print_label(P_inv)
+print()
+print_label(maybe_P_inv)
+
+print(np.allclose(maybe_P_inv, P_inv))
+
