@@ -17,24 +17,22 @@ def get_hyperparameter_values(name):
 #log = logging.getLogger('shap')
 #logging.basicConfig(level=logging.DEBUG)
 
-ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired']
+ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired', 'Matrix SHAP', 'Matrix SHAP wo Bernoulli', 'Matrix SHAP wo Bernoulli, Paired']
 
-main_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
+main_estimators = ['Optimized Kernel SHAP', 'Leverage SHAP', 'Matrix SHAP']
 
 datasets = small_n + big_n
 
 ls.plot_probs([10,100,1000], folder='images/')
-
-assert False
 
 if False:
 
     ls.visualize_predictions(datasets, main_estimators, filename='images/main_detailed.pdf')
     ls.visualize_predictions(datasets, ablation_estimators, filename='images/ablation_detailed.pdf')
 
-if False:
+if True:
 
-    num_runs = 100
+    num_runs = 10
     for dataset in datasets:
         print(dataset)
         for hyperparameter in ['sample_size', 'noise_std']:
