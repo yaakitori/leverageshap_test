@@ -130,7 +130,7 @@ class MatrixEstimator:
         for s, m_s in enumerate(m_s_all):
             s += 1
             prob = min(1, 2*self.C * self.sample_weight(s) / scipy.special.binom(self.n, s))
-            weight = 1 / (prob * scipy.special.binom(self.n, s))
+            weight = 1 / prob
             if self.paired_sampling and s == self.n // 2 and self.n % 2 == 0:
                 # Partition the all middle sets into two
                 # based on whether the combination contains n-1
@@ -159,7 +159,7 @@ class MatrixEstimator:
             weight_in = 1/(math.comb(self.n-1, size-1) * self.n)
             weight_out = 1/(math.comb(self.n-1, size) * self.n)
             S_short[:, i] = weight_in * SZ_binary[i] - weight_out * (1 - SZ_binary[i])
-        corrected_Sy = np.array(self.kernel_weights) * Sy
+        corrected_Sy = Sy * np.array(self.kernel_weights)
         self.phi = S_short @ corrected_Sy + (v1 - v0) / self.n
 
         return self.phi
