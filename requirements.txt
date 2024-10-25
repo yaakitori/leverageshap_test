@@ -3,3 +3,4 @@ shap
 xgboost
 matplotlib
 tabulate
+networkx
