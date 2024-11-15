@@ -18,4 +18,5 @@ estimators = {
     'Leverage SHAP wo Bernoulli': leverage_shap_wo_bernoulli,
     'Leverage SHAP wo Bernoulli, Paired': leverage_shap_wo_bernoulli_paired,
     'Official Tree SHAP': official_tree_shap,
+    'Permutation SHAP': official_permutation_shap,
 }

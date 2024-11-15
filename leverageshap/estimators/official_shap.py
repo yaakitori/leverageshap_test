@@ -1,4 +1,5 @@
 import shap
+import numpy as np
 
 def official_kernel_shap(baseline, explicand, model, num_samples):
     eval_model = lambda X : model.predict(X)
@@ -9,7 +10,7 @@ def official_kernel_shap(baseline, explicand, model, num_samples):
 
 def official_permutation_shap(baseline, explicand, model, num_samples):
     eval_model = lambda X : model.predict(X)
-
+    explicand = explicand.astype('float64')
     num_features = explicand.shape[1]
     num_permutations = num_samples // num_features
 

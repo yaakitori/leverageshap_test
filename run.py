@@ -17,7 +17,7 @@ def get_hyperparameter_values(name):
 #log = logging.getLogger('shap')
 #logging.basicConfig(level=logging.DEBUG)
 
-ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired', 'Matrix SHAP', 'Matrix SHAP wo Bernoulli', 'Matrix SHAP wo Bernoulli, Paired']
+ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired', 'Matrix SHAP', 'Matrix SHAP wo Bernoulli', 'Matrix SHAP wo Bernoulli, Paired', 'Permutation SHAP']
 
 main_estimators = ['Optimized Kernel SHAP', 'Leverage SHAP', 'Matrix SHAP']
 
@@ -31,9 +31,8 @@ if True:
     #ls.visualize_predictions(datasets, ablation_estimators, filename='images/ablation_detailed.pdf')
 
 if True:
-
-    num_runs = 10
-    for dataset in datasets:
+    num_runs = 90
+    for dataset in small_n + big_n:
         print(dataset)
         for hyperparameter in ['sample_size', 'noise_std']:
             print(hyperparameter)
