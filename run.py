@@ -1,4 +1,5 @@
 import leverageshap as ls
+import numpy as np
 
 small_n = ['IRIS', 'California', 'Diabetes', 'Adult']
 
@@ -22,6 +23,20 @@ ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 
 main_estimators = ['Optimized Kernel SHAP', 'Leverage SHAP', 'Matrix SHAP']
 
 datasets = small_n + big_n
+
+if True:
+    gammas = {x : [] for x in small_n}
+    for seed in range(100):
+        for dataset in small_n:
+            gamma_run = ls.compute_gamma(dataset, seed=seed)
+            gammas[dataset].append(gamma_run['gamma'])
+
+        if seed % 10 != 0: continue
+        print()
+        for dataset in small_n:
+            # print dataset name, 1st quartile, median, 3rd quartile
+            print(dataset, np.percentile(gammas[dataset], 25), np.median(gammas[dataset]), np.percentile(gammas[dataset], 75))
+            
 
 ls.plot_probs([10,100,1000], folder='images/')
 

@@ -214,6 +214,23 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs)
                 dict['weighted_error'] = weighted_error / small_setup['best_weighted_error'] 
             f.write(str(dict) + '\n')
 
+def compute_gamma(dataset, seed=42):
+    X, y = load_dataset(dataset)
+    n = X.shape[1]
+    is_small = 2**n <= 1e7
+    if not is_small: return {}
+    # Assuming deterministic
+    model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
+    model.fit(X, y)
+    baseline, explicand = load_input(X, seed=seed, is_synthetic=dataset=='Synthetic')
+    true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, num_samples=0).flatten()
+    small_setup = run_small_setup(baseline, explicand, model, true_shap_values)
+    return {
+        'gamma': small_setup['gamma'],
+        'normalized_gamma' : small_setup['normalized_gamma']
+    }
+
+
 def benchmark(num_runs, dataset, estimators, hyperparameter, hyperparameter_values, silent=False):              
 
     X, y = load_dataset(dataset)
