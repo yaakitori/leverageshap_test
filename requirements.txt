@@ -4,3 +4,4 @@ xgboost
 matplotlib
 tabulate
 networkx
+scipy

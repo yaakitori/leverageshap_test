@@ -6,6 +6,7 @@ small_n = ['IRIS', 'California', 'Diabetes', 'Adult']
 big_n = ['Correlated', 'Independent', 'NHANES', 'Communities']
 
 def get_hyperparameter_values(name):
+    if name == 'noise_std': return [0]
     if name == 'noise_std':
         return [0, .5 * 1e-3, 1e-3, .5 * 1e-2, 1e-2, .5 * 1e-1, 1e-1, .5, 1]
     elif name == 'sample_size':
@@ -24,7 +25,7 @@ main_estimators = ['Optimized Kernel SHAP', 'Leverage SHAP', 'Matrix SHAP']
 
 datasets = small_n + big_n
 
-if True:
+if False:
     gammas = {x : [] for x in small_n}
     for seed in range(100):
         for dataset in small_n:
@@ -40,18 +41,19 @@ if True:
 
 ls.plot_probs([10,100,1000], folder='images/')
 
-if True:
+if False:
 
     ls.visualize_predictions(datasets, main_estimators, filename='images/main_detailed.pdf')
     #ls.visualize_predictions(datasets, ablation_estimators, filename='images/ablation_detailed.pdf')
 
 if True:
+    estimators = {'Monte Carlo' : ls.estimators['Monte Carlo']}
     num_runs = 90
     for dataset in small_n + big_n:
         print(dataset)
         for hyperparameter in ['sample_size', 'noise_std']:
             print(hyperparameter)
-            ls.benchmark(num_runs, dataset, ls.estimators, hyperparameter, get_hyperparameter_values(hyperparameter), silent=False)
+            ls.benchmark(num_runs, dataset, estimators, hyperparameter, get_hyperparameter_values(hyperparameter), silent=False)
 
 # Plots
 

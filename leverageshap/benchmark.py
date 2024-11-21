@@ -175,7 +175,7 @@ def run_small_setup(baseline, explicand, model, true_shap_values):
     normalized_gamma = float(f'{normalized_gamma:.2g}')
     return {'A': linear_system['A'], 'b': linear_system['b'], 'best_weighted_error': best_weighted_error, 'normalized_gamma': normalized_gamma, 'gamma': gamma}
 
-def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs):
+def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs, current_estimators):
     baseline, explicand = load_input(X, seed=seed, is_synthetic=dataset=='Synthetic')
     n = X.shape[1]
     is_small = 2**n <= 1e7
@@ -184,7 +184,7 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs)
 
     small_setup = {}
      
-    for estimator_name, estimator in estimators.items():        
+    for estimator_name, estimator in current_estimators.items():        
         if estimator_name in ['Official Tree SHAP']:
             continue
 
@@ -231,7 +231,7 @@ def compute_gamma(dataset, seed=42):
     }
 
 
-def benchmark(num_runs, dataset, estimators, hyperparameter, hyperparameter_values, silent=False):              
+def benchmark(num_runs, dataset, current_estimators, hyperparameter, hyperparameter_values, silent=False):              
 
     X, y = load_dataset(dataset)
     n = X.shape[1]
@@ -245,7 +245,7 @@ def benchmark(num_runs, dataset, estimators, hyperparameter, hyperparameter_valu
             if hyperparameter == 'sample_size':
                 hyperparameter_value = int(hyperparameter_value * n)
             config[hyperparameter] = hyperparameter_value
-            run_one_iteration(X, run_idx * num_runs, dataset, model, sample_size=config['sample_size'], noise_std=config['noise_std'], num_runs=num_runs)
+            run_one_iteration(X, run_idx * num_runs, dataset, model, sample_size=config['sample_size'], noise_std=config['noise_std'], num_runs=num_runs, current_estimators=current_estimators)
 
 class SyntheticModel:
     def __init__(self, v, correspondence):

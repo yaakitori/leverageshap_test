@@ -2,12 +2,14 @@ import scipy.special
 from .official_shap import *
 from .regression import *
 from .matrix import *
+from .naive import *
 
 import numpy as np
 import xgboost as xgb
 import scipy
 
 estimators = {
+    'Monte Carlo': monte_carlo,
     'Matrix SHAP': matrix_shap,
     'Matrix SHAP wo Bernoulli': matrix_shap_wo_bernoulli,
     'Matrix SHAP wo Bernoulli, Paired': matrix_shap_wo_bernoulli_paired,
