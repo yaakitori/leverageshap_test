@@ -21,7 +21,9 @@ def get_hyperparameter_values(name):
 
 ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired', 'Matrix SHAP', 'Matrix SHAP wo Bernoulli', 'Matrix SHAP wo Bernoulli, Paired', 'Permutation SHAP']
 
-main_estimators = ['Optimized Kernel SHAP', 'Leverage SHAP', 'Matrix SHAP']
+ablation_estimators = ['Monte Carlo', 'Permutation SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
+
+main_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
 
 datasets = small_n + big_n
 
@@ -46,9 +48,9 @@ if False:
     ls.visualize_predictions(datasets, main_estimators, filename='images/main_detailed.pdf')
     #ls.visualize_predictions(datasets, ablation_estimators, filename='images/ablation_detailed.pdf')
 
-if True:
-    estimators = {'Monte Carlo' : ls.estimators['Monte Carlo']}
-    num_runs = 90
+if False:
+    estimators = {'Monte Carlo': ls.estimators['Monte Carlo']}
+    num_runs = 100
     for dataset in small_n + big_n:
         print(dataset)
         for hyperparameter in ['sample_size', 'noise_std']:

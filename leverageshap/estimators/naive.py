@@ -5,6 +5,7 @@ def monte_carlo(baseline, explicand, model, num_samples):
     # Ensure that the number of samples is even
     samples_per_group = 2 * ((num_samples // n) // 2 )
     samples_per_group = samples_per_group if samples_per_group % 2 == 0 else samples_per_group + 1
+    samples_per_group = num_samples
     phi = np.zeros_like(baseline)
     gen = np.random.Generator(np.random.PCG64())
 
