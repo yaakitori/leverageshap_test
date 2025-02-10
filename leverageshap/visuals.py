@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.special
+import scienceplots
 
 from .estimators import estimators
 from .benchmark import get_dataset_size
@@ -23,6 +24,7 @@ name_lookup = {
 
 def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y=True, plot_mean=False, include_estimators=estimators):
     plt.clf()
+    plt.style.use('science')
     num_datasets = len(results)
     num_rows = 1 if num_datasets <= 4 else 2
     dims = (num_rows, num_datasets // num_rows + num_datasets % num_rows)
@@ -74,6 +76,7 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
 
 def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False):
     plt.clf()
+    plt.style.use('science')
     num = 0
     for name, data in results.items():
         if name in exclude or name == 'n':
@@ -105,6 +108,7 @@ def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False)
 
 def plot_probs(ns, folder=None):
     plt.clf()
+    plt.style.use('science')
     # Set figsize
     # Three subplots
     fig, axs = plt.subplots(1, 3, figsize=(10, 2))
@@ -118,7 +122,7 @@ def plot_probs(ns, folder=None):
         # Incrase line width
         axs[idx].plot(s, kernel_prob, label='Kernel SHAP', color=cbcolors_lookup['Kernel SHAP'], linestyle=linestyles_lookup['Kernel SHAP'], linewidth=3)
         axs[idx].plot(s, leverage_prob, label='Leverage SHAP', linestyle=linestyles_lookup['Leverage SHAP'], color=cbcolors_lookup['Leverage SHAP'], linewidth=3)
-        axs[idx].set_title(f'n = {n}')
+        axs[idx].set_title(rf'$n = {n}$')
         axs[idx].set_yscale('log')
         axs[idx].set_xlabel('Subset Size')
         if idx == 0:
@@ -130,6 +134,7 @@ def plot_probs(ns, folder=None):
     plt.close()
 
 def plot_sampled_sizes(n, m, folder=None):
+    plt.style.use('science')
     s = np.arange(1, n)
     kernel_weight = 1 / (s * (n - s))
     kernel_prob = kernel_weight / np.sum(kernel_weight)

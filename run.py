@@ -6,9 +6,9 @@ small_n = ['IRIS', 'California', 'Diabetes', 'Adult']
 big_n = ['Correlated', 'Independent', 'NHANES', 'Communities']
 
 def get_hyperparameter_values(name):
-    if name == 'noise_std': return [0]
+    #if name == 'noise_std': return [0]
     if name == 'noise_std':
-        return [0, .5 * 1e-3, 1e-3, .5 * 1e-2, 1e-2, .5 * 1e-1, 1e-1, .5, 1]
+        return [.5 * 1e-3, 1e-3, .5 * 1e-2, 1e-2, .5 * 1e-1, 1e-1, .5, 1]
     elif name == 'sample_size':
         return [5, 10, 20, 40, 80, 160]
     else:
@@ -19,9 +19,9 @@ def get_hyperparameter_values(name):
 #log = logging.getLogger('shap')
 #logging.basicConfig(level=logging.DEBUG)
 
-ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired', 'Matrix SHAP', 'Matrix SHAP wo Bernoulli', 'Matrix SHAP wo Bernoulli, Paired', 'Permutation SHAP']
+ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired', 'Permutation SHAP']
 
-ablation_estimators = ['Monte Carlo', 'Permutation SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
+#ablation_estimators = ['Monte Carlo', 'Permutation SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
 
 main_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
 
@@ -43,19 +43,21 @@ if False:
 
 ls.plot_probs([10,100,1000], folder='images/')
 
-if False:
+if True:
 
     ls.visualize_predictions(datasets, main_estimators, filename='images/main_detailed.pdf')
-    #ls.visualize_predictions(datasets, ablation_estimators, filename='images/ablation_detailed.pdf')
+    ls.visualize_predictions(datasets, ablation_estimators, filename='images/ablation_detailed.pdf')
 
 if False:
-    estimators = {'Monte Carlo': ls.estimators['Monte Carlo']}
+    ablation_estimators = {
+        name: ls.estimators[name] for name in ablation_estimators
+    }
     num_runs = 100
     for dataset in small_n + big_n:
         print(dataset)
         for hyperparameter in ['sample_size', 'noise_std']:
             print(hyperparameter)
-            ls.benchmark(num_runs, dataset, estimators, hyperparameter, get_hyperparameter_values(hyperparameter), silent=False)
+            ls.benchmark(num_runs, dataset, ablation_estimators, hyperparameter, get_hyperparameter_values(hyperparameter), silent=False)
 
 # Plots
 
@@ -83,5 +85,5 @@ for y_name in ['shap_error', 'weighted_error']:
         results_main[dataset] = {estimator : results[dataset][estimator] for estimator in main_estimators}
     ls.one_big_table(results_main, f'tables/main_{y_name}.tex', error_type=y_name)
         
-    #for dataset in results:
-    #    ls.benchmark_table(results[dataset], f'tables/{dataset}-{y_name}.tex', print_md=False)
+    for dataset in results:
+        ls.benchmark_table(results[dataset], f'tables/{dataset}-{y_name}.tex', print_md=False)

@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import scienceplots
 from .estimators import *
 from .datasets import *
 import numpy as np
@@ -99,8 +100,11 @@ def compute_weighted_error(baseline, explicand, model, shap_values):
 
 markers = ['o', 's', 'D', '^', 'v', '<', '>', 'p', 'P', '*', 'X', 'd', 'h', 'H', '+', 'x', '|', '_']
 
+cbcolors = ['#88CCEE', '#332288', '#117733', '#CC6677', '#44AA99', '#AA4499', '#882255', '#AA4499', '#661100', '#6699CC', '#AA4466', '#4477AA']
+
 def visualize_predictions(datasets, include_estimators, filename):
     plt.clf()
+    plt.style.use('science')
     row_num = 2 if len(include_estimators) > 3 else 1
     fig, axs = plt.subplots(row_num, 3, figsize=(10, 3 * row_num))
     for dataset_idx, dataset in enumerate(datasets):
@@ -126,7 +130,7 @@ def visualize_predictions(datasets, include_estimators, filename):
                 ax = axs[i]
             else:
                 ax = axs[i // 3, i % 3]
-            ax.scatter(true_shap_values, shap_values, alpha=0.5, marker=markers[dataset_idx], label=dataset + ' (n=' + str(n) + ')')
+            ax.scatter(true_shap_values, shap_values, alpha=0.5, marker=markers[dataset_idx], label=dataset + rf' ($n ={n}$)', color=cbcolors[dataset_idx])
             ax.set_title(estimator_name)
             i += 1
     
@@ -206,7 +210,9 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs,
                 'noise': noise_std,
                 'n' : n,
             }
-            dict['shap_error'] = ((shap_values - true_shap_values) ** 2).mean()
+            shap_norm_sq = (true_shap_values**2).sum()
+            dict['shap_error'] = ((shap_values - true_shap_values) ** 2).sum() / shap_norm_sq
+            dict['shap_norm_sq'] = shap_norm_sq
             if is_small:
                 if small_setup == {}:
                     small_setup = run_small_setup(baseline, explicand, model, true_shap_values)
@@ -356,7 +362,9 @@ def benchmark_gamma(num_runs, n, include_estimators, sample_size, silent=False):
                         'n' : n,
                         'alpha' : alpha,
                     }
-                    dict['shap_error'] = ((shap_values - gamma_labels['true_shap_values']) ** 2).mean()
+                    shap_norm_sq = (gamma_labels['true_shap_values'] ** 2).sum()
+                    dict['shap_error'] = ((shap_values - gamma_labels['true_shap_values']) ** 2).sum() / shap_norm_sq
+                    dict['shap_norm_sq'] = shap_norm_sq
                     if is_small:
                         if small_setup == {}:
                             small_setup = run_small_setup(baseline, explicand, model, gamma_labels['true_shap_values'])
