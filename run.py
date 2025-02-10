@@ -27,7 +27,7 @@ main_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
 
 datasets = small_n + big_n
 
-if False:
+if True:
     gammas = {x : [] for x in small_n}
     for seed in range(100):
         for dataset in small_n:
