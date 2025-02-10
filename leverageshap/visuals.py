@@ -28,7 +28,7 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
     num_datasets = len(results)
     num_rows = 1 if num_datasets <= 4 else 2
     dims = (num_rows, num_datasets // num_rows + num_datasets % num_rows)
-    fig, axs = plt.subplots(*dims, figsize=(num_datasets /num_rows * 3, 2.5 * num_rows))
+    fig, axs = plt.subplots(*dims, figsize=(num_datasets /num_rows * 2.5, 1.87 * num_rows))
     for i, (dataset, results_by_dataset) in enumerate(results.items()):
         n = get_dataset_size(dataset)
         if num_datasets > 4:
@@ -68,7 +68,7 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
     num_labels = len(plt.legend().get_texts())
     num_legend_cols = num_labels +1 if num_labels <= 4 else num_labels // 2
     # Increase legend font size
-    plt.legend(fancybox=True, bbox_to_anchor=(1,-.4), ncol=num_legend_cols, fontsize=12)
+    plt.legend(fancybox=True, bbox_to_anchor=(1,-.3), ncol=num_legend_cols, fontsize=12)
     if filename is not None:
         plt.savefig(filename, dpi=1000, bbox_inches='tight')
     else:
