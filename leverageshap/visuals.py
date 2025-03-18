@@ -20,6 +20,7 @@ name_lookup = {
     'sample_size': r'Sample Size $(m)$',
     'noise': r'Standard Deviation of Noise $(\sigma)$',
     'gamma': r'$\gamma$',# $\left( \frac{\| {b} \|_2^2}{\| {A} {\phi} \|_2^2} \right)$',
+    'alpha' : r'$\alpha$',
 }
 
 def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y=True, plot_mean=False, include_estimators=estimators):

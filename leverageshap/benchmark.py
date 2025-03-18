@@ -309,13 +309,11 @@ def build_gamma_labels(n, alpha):
     col_in_span = col_in_span / np.linalg.norm(col_in_span)
     b = (1 - alpha) * col_in_span + alpha * col_not_in_span
 
-    # Convert from b to y
     v1 = 1
     v0 = 0
-    y = b + Z.sum(axis=1) * (v1 - v0) /n 
 
     v = np.zeros(2**n)
-    v[1:-1] = y * inv_sqrt_weights
+    v[1:-1] = b# * inv_sqrt_weights
     v[0] = v0
     v[-1] = v1
 
@@ -332,7 +330,7 @@ def benchmark_gamma(num_runs, n, include_estimators, sample_size, silent=False):
     baseline = np.zeros((1, n))
     explicand = np.ones((1, n))
     for run_idx in tqdm(range(num_runs), disable=silent):
-        for alpha in [.2, .3, .4, .5, .6, .7, .8]:
+        for alpha in [.1, .3, .5, .7, .9]:
             seed = run_idx * num_runs + int(alpha * 100)
             np.random.seed(seed)
             gamma_labels = build_gamma_labels(n, alpha)

@@ -193,3 +193,7 @@ def kernel_shap_paired(baseline, explicand, model, num_samples):
 def kernel_shap(baseline, explicand, model, num_samples):
     estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=False, leverage_sampling=False, bernoulli_sampling=False)
     return estimator.compute()
+
+def leverage_shap_wo_paired(baseline, explicand, model, num_samples):
+    estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=False, leverage_sampling=True, bernoulli_sampling=False)
+    return estimator.compute()
