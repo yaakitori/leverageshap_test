@@ -43,6 +43,8 @@ def plot_with_subplots(results, x_name, y_name, filename=None, log_x=True, log_y
             x_values = sorted(x_values)
             y_mean = [np.mean(results_by_estimator[x]) for x in x_values]
             y_median = np.array([np.median(results_by_estimator[x]) for x in x_values])
+            if y_name == 'shap_error' and x_name == 'sample_size':
+                print(f'{dataset} {estimator_name} {y_name} {x_name} {x_values} {y_median}')
             y_upper = np.array([np.percentile(results_by_estimator[x], 75) for x in x_values])
             y_lower = np.array([np.percentile(results_by_estimator[x], 25) for x in x_values])
             if plot_mean:
