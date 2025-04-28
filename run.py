@@ -19,7 +19,7 @@ def get_hyperparameter_values(name):
 #log = logging.getLogger('shap')
 #logging.basicConfig(level=logging.DEBUG)
 
-ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Kernel SHAP Paired', 'Leverage SHAP wo Bernoulli', 'Leverage SHAP wo Bernoulli, Paired', 'Permutation SHAP']
+ablation_estimators = ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP', 'Leverage SHAP (Unpaired)', 'Kernel SHAP Paired', 'Permutation SHAP']
 
 #ablation_estimators = ['Monte Carlo', 'Permutation SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
 
