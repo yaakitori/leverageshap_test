@@ -16,26 +16,46 @@ import scipy
 # 'gamma' (optional): ||b||^2 / ||Ax||^2 where x is the estimated SHAP values
 
 def build_full_linear_system(baseline, explicand, model):
+    """Kernel SHAP の理論式に基づき、全ての特徴量の組み合わせ（部分集合）について線形回帰の係数行列𝐴と定数ベクトル𝑏を構築する
+
+        Args:
+            baseline (_type_): _description_
+            explicand (_type_): _description_
+            model (_type_): _description_
+
+        Returns:
+            _type_: _description_
+    """
     n = baseline.shape[1]
-    binary_Z = np.zeros((2**n-2, n))
+    binary_Z = np.zeros((2**n-2, n)) # マスク行列を用意（特徴量の全組み合わせから全集合と空集合を除いた数*特徴量数の大きさ）
     idx = 0
     for s in range(1, n):
-        for indices in itertools.combinations(range(n), s):
+        for indices in itertools.combinations(range(n), s): # 特徴量の組み合わせを全て列挙
             binary_Z[idx, list(indices)] = 1
             idx += 1
+    # 重み計算
     binary_Z1_norm = np.sum(binary_Z, axis=1)
+    # 論文中 Equation 8）に基づき、相当する重みの平方根の逆数を計算
+    # (サンプル効率を高めるための重み付けカーネル)
     inv_sqrt_weights = np.sqrt(binary_Z1_norm * (n - binary_Z1_norm) * scipy.special.binom(n, binary_Z1_norm))
-
+    # 重み付きマスク行列に
     Z = 1 / inv_sqrt_weights[:, np.newaxis] * binary_Z
+    # 中心化行列（制約付き線形問題を非制約問題に）
     P = np.eye(n) - np.ones((n, n)) / n
+    # 重み付きかつ中心化された説明変数行列
     A = Z @ P
+    # 入力サンプル
+    # （マスクごとに「欠損扱いの特徴量は baseline、存在扱いの特徴量は explicand」を組み合わせたもの）
     inputs = baseline * (1 - binary_Z) + explicand * binary_Z
+    # 予測値
     v1 = model.predict(explicand)
     vz = model.predict(inputs)
     v0 = model.predict(baseline)
+    # 予測値の差分
     y = (vz - v0) / inv_sqrt_weights
+    # カーネルシャープの切片に相当する項を補正
     b = y - Z.sum(axis=1) * (v1 - v0) / n
-    return {'A': A, 'b': b}
+    return {'A': A, 'b': b} # この二つがあれば、SHAP値を計算できる
 
 def get_dataset_size(dataset):
     if 'Synthetic_' in dataset:
@@ -44,12 +64,24 @@ def get_dataset_size(dataset):
     return X.shape[1]
 
 def read_file(dataset, estimator, x_name, y_name, constraints={}):
+    """各ハイパーパラメータの組み合わせに対して、SHAP値を計算した結果を読み込む
+
+    Args:
+        dataset (_type_): _description_
+        estimator (_type_): _description_
+        x_name (_type_): _description_
+        y_name (_type_): _description_
+        constraints (dict, optional): _description_. Defaults to {}.
+
+    Returns:
+        _type_: _description_
+    """
     filename = f'output/{dataset}_{estimator}.csv'
     if not os.path.exists(filename): return {}
     results = {}
     with open(filename, 'r') as f:
         for line in f:
-            dict = eval(line)
+            dict = eval(line) # 文字列（ファイルの一行）を辞書に変換
             add = True
             for key, value in constraints.items():
                 if dict[key] != value:
@@ -109,9 +141,9 @@ def visualize_predictions(datasets, include_estimators, filename):
     fig, axs = plt.subplots(row_num, 3, figsize=(10, 3 * row_num))
     for dataset_idx, dataset in enumerate(datasets):
         X, y = load_dataset(dataset)
-        n = X.shape[1]
+        n = X.shape[1] # 特徴量数
         num_samples = 5 * n
-        model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
+        model = xgb.XGBRegressor(n_estimators=100, max_depth=4) # 説明対象モデル
         model.fit(X, y)
         baseline, explicand = load_input(X)
         # 2 by 3 array of axes in matplotlib plot
@@ -164,36 +196,62 @@ class NoisyModel:
 
     def predict(self, X):
         self.sample_count += len(X)
+        # Add noise to the predictions
         return self.model.predict(X) + np.random.normal(0, self.noise_std, X.shape[0])
     
     def get_sample_count(self):
         return self.sample_count
 
-def run_small_setup(baseline, explicand, model, true_shap_values):
+def run_small_setup(baseline, explicand, model, true_shap_values)-> dict[str, Any]:
+    """Kernel SHAP の理論式に基づく線形システムの真のSHAP値との「当てはめ誤差」を多角的に評価するための補助関数
+
+    Args:
+        baseline (_type_): _description_
+        explicand (_type_): _description_
+        model (_type_): _description_
+        true_shap_values (_type_): _description_
+
+    Returns:
+        dict[str, Any]: _description_
+    """
     linear_system = build_full_linear_system(baseline, explicand, model)
-    best_weighted_error = np.sum((linear_system['A'] @ true_shap_values - linear_system['b'])**2)
+    best_weighted_error = np.sum((linear_system['A'] @ true_shap_values - linear_system['b'])**2) # カーネルシャープの残差誤差の二乗和
     Aphi = linear_system['A'] @ true_shap_values
-    gamma = np.sum((Aphi - linear_system['b'])**2) / np.sum((Aphi)**2)    
-    normalized_gamma = gamma / np.sum((true_shap_values)**2)
+    gamma = np.sum((Aphi - linear_system['b'])**2) / np.sum((Aphi)**2) # 重み付き誤差のスケール指標
+    normalized_gamma = gamma / np.sum((true_shap_values)**2)  # 真の SHAP 値全体の大きさで割った正規化指標
     # Round to 2 significant figures
     normalized_gamma = float(f'{normalized_gamma:.2g}')
     return {'A': linear_system['A'], 'b': linear_system['b'], 'best_weighted_error': best_weighted_error, 'normalized_gamma': normalized_gamma, 'gamma': gamma}
 
 def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs, current_estimators):
+    """1つのインスタンスに対してSHAP値を計算する
+
+    Args:
+        X (_type_): _description_
+        seed (_type_): _description_
+        dataset (_type_): _description_
+        model (_type_): 説明対象モデル
+        sample_size (_type_): _description_
+        noise_std (_type_): _description_
+        num_runs (_type_): _description_
+        #!
+        current_estimators (dic[str:exp_model]): SHAP値を計算する説明器のリストだったはずが、いつの間にか辞書に(__init__.pyで定義)
+    """
     baseline, explicand = load_input(X, seed=seed, is_synthetic=dataset=='Synthetic')
     n = X.shape[1]
-    is_small = 2**n <= 1e7
+    is_small = 2**n <= 1e7  # 2^n が 1e7 以下なら「小規模」とみなす
     # Compute the true SHAP values (assuming tree model)
     true_shap_values = estimators['Official Tree SHAP'](baseline, explicand, model, sample_size).flatten()
 
     small_setup = {}
-     
-    for estimator_name, estimator in current_estimators.items():        
+
+    for estimator_name, estimator in current_estimators.items(): # 説明器の数ループ
         if estimator_name in ['Official Tree SHAP']:
             continue
 
+        # SHAP値を保存するファイルを開く
         results = read_file(dataset, estimator_name, 'sample_size', 'shap_error', {'noise': noise_std, 'n': n})
-        if results != {} and sample_size in results:
+        if results != {} and sample_size in results:  # 既に十分な回数の結果があればスキップ
             if len(results[sample_size]) >= num_runs: continue
         noised_model = NoisyModel(model, noise_std)
         shap_values = estimator(baseline, explicand, noised_model, sample_size).flatten()
@@ -210,15 +268,16 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs,
                 'noise': noise_std,
                 'n' : n,
             }
-            shap_norm_sq = (true_shap_values**2).sum()
-            dict['shap_error'] = ((shap_values - true_shap_values) ** 2).sum() / shap_norm_sq
+            # TODO
+            shap_norm_sq = (true_shap_values**2).sum() # 真のSHAP値のノルムの2乗（真のシャープ値を足し合わせるとベースラインとの最終的なズレがわかる）
+            dict['shap_error'] = ((shap_values - true_shap_values) ** 2).sum() / shap_norm_sq # 推定SHAP値と真のSHAP値との平均二乗誤差を計算
             dict['shap_norm_sq'] = shap_norm_sq
-            if is_small:
+            if is_small: # 特徴量（の組み合わせが）少ないモノに対してのみ処理
                 if small_setup == {}:
                     small_setup = run_small_setup(baseline, explicand, model, true_shap_values)
-                weighted_error = np.sum((small_setup['A'] @ shap_values - small_setup['b'])**2)
-                dict['weighted_error'] = weighted_error / small_setup['best_weighted_error'] 
-            f.write(str(dict) + '\n')
+                weighted_error = np.sum((small_setup['A'] @ shap_values - small_setup['b'])**2)  # 推定値での線形システムの誤差二乗和を計算し、真の SHAP 値での最良誤差 (best_weighted_error) で正規化
+                dict['weighted_error'] = weighted_error / small_setup['best_weighted_error'] # 'weighted_error' (optional): ||Ax- b||^2 / ||Ax* - b||^2  x*は真のSHAP値、xは推定SHAP値
+            f.write(str(dict) + '\n') # 1インスタンスの処理が終了
 
 def compute_gamma(dataset, seed=42):
     X, y = load_dataset(dataset)
@@ -238,12 +297,22 @@ def compute_gamma(dataset, seed=42):
 
 
 def benchmark(num_runs, dataset, current_estimators, hyperparameter, hyperparameter_values, silent=False):              
+    """SHAP値を各説明器で計算する
 
+    Args:
+        num_runs (_type_): _description_
+        dataset (_type_): _description_
+        current_estimators (list[str]): 説明器のリスト
+        例: ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
+        hyperparameter (_type_): _description_
+        hyperparameter_values (_type_): _description_
+        silent (bool, optional): _description_. Defaults to False.
+    """
     X, y = load_dataset(dataset)
-    n = X.shape[1]
+    n = X.shape[1] # 特徴量数
     # Assuming deterministic
     model = xgb.XGBRegressor(n_estimators=100, max_depth=4)
-    model.fit(X, y)
+    model.fit(X, y) # 説明対象モデルを訓練
 
     config = {'sample_size': 10*n, 'noise_std' : 0}
     for run_idx in tqdm(range(num_runs), disable=silent):

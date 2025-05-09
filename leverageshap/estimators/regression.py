@@ -50,7 +50,7 @@ class RegressionEstimator:
         self.baseline = baseline
         self.explicand = explicand
         # Subtract 2 for the baseline and explicand and ensure num_samples is even
-        self.num_samples = int((num_samples -2 ) // 2) * 2
+        self.num_samples = int((num_samples -2 ) // 2) * 2 # 必ず偶数にする
         self.paired_sampling = paired_sampling
         self.n = self.baseline.shape[1] # Number of features
         self.gen = np.random.Generator(np.random.PCG64())
@@ -174,6 +174,7 @@ class RegressionEstimator:
 
         return self.phi
 
+# TODO
 def leverage_shap(baseline, explicand, model, num_samples):
     estimator = RegressionEstimator(model, baseline, explicand, num_samples, paired_sampling=True, leverage_sampling=True, bernoulli_sampling=True)
     return estimator.compute()

@@ -123,6 +123,12 @@ def plot_data(results, dataset, filename=None, exclude=[], weighted_error=False)
     plt.close()
 
 def plot_probs(ns, folder=None):
+    """論文中の図2のサンプリング確率分布をプロットする関数
+
+    Args:
+        ns (_type_): _description_
+        folder (_type_, optional): _description_. Defaults to None.
+    """
     plt.clf()
     plt.style.use('science')
     # Set figsize

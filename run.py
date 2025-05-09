@@ -1,11 +1,12 @@
 import leverageshap as ls
 import numpy as np
 
-small_n = ['IRIS', 'California', 'Diabetes', 'Adult']
+small_n = ['IRIS', 'California', 'Diabetes', 'Adult'] # 特徴量数が少ないデータセット
 
-big_n = ['Correlated', 'Independent', 'NHANES', 'Communities']
+big_n = ['Correlated', 'Independent', 'NHANES', 'Communities'] # 特徴量数が多いデータセット
 
 def get_hyperparameter_values(name):
+    # ノイズに対する頑強さを調べる実験で使うハイパーパラメータを取得
     #if name == 'noise_std': return [0]
     if name == 'noise_std':
         return [.5 * 1e-3, 1e-3, .5 * 1e-2, 1e-2, .5 * 1e-1, 1e-1, .5, 1]
@@ -41,22 +42,23 @@ if False:
             print(dataset, np.percentile(gammas[dataset], 25), np.median(gammas[dataset]), np.percentile(gammas[dataset], 75))
             
 
-ls.plot_probs([10,100,1000], folder='images/')
+ls.plot_probs([10,100,1000], folder='images/') # 論文中の図2を生成
 
 if False:
 
-    ls.visualize_predictions(datasets, main_estimators, filename='images/main_detailed.pdf')
+    ls.visualize_predictions(datasets, main_estimators, filename='images/main_detailed.pdf') # 論文中の図1を生成
     ls.visualize_predictions(datasets, ablation_estimators, filename='images/ablation_detailed.pdf')
 
 if False:
     ablation_estimators = {
         name: ls.estimators[name] for name in ablation_estimators
     }
-    num_runs = 100
+    num_runs = 100 # この数、独立に実験を行う
     for dataset in small_n + big_n:
         print(dataset)
         for hyperparameter in ['sample_size', 'noise_std']:
             print(hyperparameter)
+            # 各データセット、各ハイパーパラメータに対して、各推定器の平均と分散を計算
             ls.benchmark(num_runs, dataset, ablation_estimators, hyperparameter, get_hyperparameter_values(hyperparameter), silent=False)
 
 # Plots

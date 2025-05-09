@@ -47,19 +47,22 @@ def load_dataset(dataset_name):
     X, y = dataset_loaders[dataset_name]()
     # Remove nan values
     X = X.fillna(X.mean())
-    return X, y
+    return X, y # データセットの特徴量、正解ラベル
 
+# X:データセットの特徴量(load_datasetで取得したX)
 def load_input(X, seed=None, is_synthetic=False):
     if is_synthetic:
-        baseline = np.zeros((1, X.shape[1]))
-        explicand = np.ones((1, X.shape[1]))
+        baseline = np.zeros((1, X.shape[1])) # すべての特徴量が0（存在しない）のベースライン
+        explicand = np.ones((1, X.shape[1])) # すべての特徴量が1（存在する存在する）の説明対象
         return baseline, explicand
     if seed is not None:
         np.random.seed(seed)
-    baseline = X.mean().values.reshape(1, -1)
-    explicand_idx = np.random.choice(X.shape[0])
-    explicand = X.iloc[explicand_idx].values.reshape(1, -1)
-    for i in range(explicand.shape[1]):
+    baseline = X.mean().values.reshape(1, -1)  # 各特徴量の平均値をベースラインとして使用。.reshape(1, -1)で1行n列 の2次元配列に整形
+    explicand_idx = np.random.choice(X.shape[0]) # 説明対象のインデックスをランダムに選択
+    explicand = X.iloc[explicand_idx].values.reshape(1, -1) # 説明対象の行の特徴量を取得
+    for i in range(explicand.shape[1]): # 説明対象のインスタンスの各特徴量について
+        # baseline と explicandが各特徴量ごとに必ず異なる値を持つよう保証する
+        # SHAP 等の説明手法では、ベースラインとの差分を計算するため、ある特徴量でベースラインと同値だと説明が得られない（差分が 0）というケースを避けたい、という意図がある
         while baseline[0, i] == explicand[0, i]:
             explicand_idx = np.random.choice(X.shape[0])
             explicand[0,i] = X.iloc[explicand_idx, i]
