@@ -40,7 +40,7 @@ if False:
         for dataset in small_n:
             # print dataset name, 1st quartile, median, 3rd quartile
             print(dataset, np.percentile(gammas[dataset], 25), np.median(gammas[dataset]), np.percentile(gammas[dataset], 75))
-            
+
 
 ls.plot_probs([10,100,1000], folder='images/') # 論文中の図2を生成
 
