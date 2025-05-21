@@ -30,7 +30,7 @@ def build_full_linear_system(baseline, explicand, model):
     binary_Z = np.zeros((2**n-2, n)) # マスク行列を用意（特徴量の全組み合わせから全集合と空集合を除いた数*特徴量数の大きさ）
     idx = 0
     for s in range(1, n):
-        for indices in itertools.combinations(range(n), s): # 特徴量の組み合わせを全て列挙
+        for indices in itertools.combinations(range(n), s): # サイズ s の特徴量の組み合わせを全て列挙
             binary_Z[idx, list(indices)] = 1
             idx += 1
     # 重み計算
@@ -236,6 +236,9 @@ def run_one_iteration(X, seed, dataset, model, sample_size, noise_std, num_runs,
         num_runs (_type_): _description_
         #!
         current_estimators (dic[str:exp_model]): SHAP値を計算する説明器のリストだったはずが、いつの間にか辞書に(__init__.pyで定義)
+    Returns:
+        結果をファイルに保存
+
     """
     baseline, explicand = load_input(X, seed=seed, is_synthetic=dataset=='Synthetic')
     n = X.shape[1]
@@ -304,8 +307,8 @@ def benchmark(num_runs, dataset, current_estimators, hyperparameter, hyperparame
         dataset (_type_): _description_
         current_estimators (list[str]): 説明器のリスト
         例: ['Kernel SHAP', 'Optimized Kernel SHAP', 'Leverage SHAP']
-        hyperparameter (_type_): _description_
-        hyperparameter_values (_type_): _description_
+        hyperparameter (_type_): 'noise_std' or 'sample_size'
+        hyperparameter_values (_type_): 'sample_size'の場合 ×10される
         silent (bool, optional): _description_. Defaults to False.
     """
     X, y = load_dataset(dataset)

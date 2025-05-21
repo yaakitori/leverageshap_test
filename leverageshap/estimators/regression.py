@@ -3,11 +3,21 @@ import scipy
 import scipy.special
 import math
 
-def ith_combination(pool, r, index):
+# 「マスク行列 𝑍 の各行（どの特徴量を 1 にするか）」 を作る土台が combination_generator
+def ith_combination(pool: range, r: int, index: int):
     # Function written by ChatGPT
     """
     pool の要素からちょうど r 個を 辞書順で選ぶとき、
     “index 番目” の組合せのみを直接計算する関数。全組合せを列挙せずに高速に取得できる。
+    すべての組合せを列挙してから取り出すとメモリと時間がかかるので、計数（combinatorial counting）を使って一発で求める
+
+    Args:
+        pool (range): 要素を選ぶ元の集合
+        r (int): 選択する要素の数（特徴量の部分集合のサイズ）
+        index (int): 取得したい組合せのインデックス
+
+    Returns:
+        tuple: index 番目の組合せをタプルで返す
     """
     n = len(pool)
     combination = []
@@ -15,7 +25,7 @@ def ith_combination(pool, r, index):
     k = r
     start = 0
     
-    for i in range(r):
+    for i in range(r): # r個の特長量（要素）をサンプリング
         # Find the largest value for the first element in the combination
         # that allows completing the remaining k-1 elements
         for j in range(start, elements_left):
@@ -29,26 +39,35 @@ def ith_combination(pool, r, index):
     
     return tuple(combination)
 
+## 各部分集合のサイズのサンプリングと そのサンプリングされたサイズの部分集合を生成 ##
 def combination_generator(gen, n, s, num_samples):
     """
-    Generate num_samples random combinations of s elements from a pool num_samples of size n in two settings:
-    1. If the number of combinations is small (converting to an int does NOT cause an overflow error), randomly sample num_samples integers without replacement and generate the corresponding combinations on the fly with ith_combination.
-    2. If the number of combinations is large (converting to an int DOES cause an overflow error), randomly sample num_samples combinations directly with replacement.
+        Generate num_samples random combinations of s elements from a pool num_samples of size n in two settings:
+        1. If the number of combinations is small (converting to an int does NOT cause an overflow error), randomly sample num_samples integers without replacement and generate the corresponding combinations on the fly with ith_combination.
+        2. If the number of combinations is large (converting to an int DOES cause an overflow error), randomly sample num_samples combinations directly with replacement.
+        Leverage SHAP では「特徴量 𝑛 個からサイズ s の部分集合を num_samples 個ランダムに取る」という操作を頻繁に行う。
+        この関数はその部分集合をジェネレータとして順次返す
+        Args:
+            gen (np.random.Generator): numpy の random generator
+            n (int): 特徴量数
+            s (int): 部分集合のサイズ
+            num_samples (int): 生成する部分集合の数
     """
     num_combos = math.comb(n, s)
     try:
-        indices = gen.choice(num_combos, num_samples, replace=False)
+        indices = gen.choice(num_combos, num_samples, replace=False)  # 0 ~ num_combos-1 の整数の中から、num_sample個の整数を重複なしでサンプリング
         for i in indices:
-            yield ith_combination(range(n), s, i)
+            yield ith_combination(range(n), s, i) # 特徴量のインデックスを要素に持つリストを出力
     except OverflowError:
         for _ in range(num_samples):
-            yield gen.choice(n, s, replace=False)
+            yield gen.choice(n, s, replace=False)  # 要素を直接抽出（こちらは with replacement のような振る舞い）
+
 
 class RegressionEstimator:
     def __init__(self, model, baseline, explicand, num_samples, paired_sampling=False, leverage_sampling=False, bernoulli_sampling=False):
         self.model = model
         self.baseline = baseline
-        self.explicand = explicand # そのままのデータ
+        self.explicand = explicand # そのままのデータ（1インスタンス）
         # Subtract 2 for the baseline and explicand and ensure num_samples is even
         self.num_samples = int((num_samples -2 ) // 2) * 2 # 必ず偶数にする
         self.paired_sampling = paired_sampling # 部分集合の補集合も合わせてサンプリング
@@ -56,7 +75,7 @@ class RegressionEstimator:
         self.gen = np.random.Generator(np.random.PCG64())
         self.sample_weight = lambda s : 1 / (s * (self.n - s)) if not leverage_sampling else np.ones_like(s)
         self.reweight = lambda s : 1 / (self.sample_weight(s) * (s * (self.n - s)))
-        self.kernel_weights = []
+        self.kernel_weights = [] # 重みを格納するリスト、出力させたい
         self.sample = self.sample_with_replacement if not bernoulli_sampling else self.sample_without_replacement
         #self.used_indices = set()
     
@@ -90,14 +109,16 @@ class RegressionEstimator:
             self.add_one_sample(idx, indices, weight=weight)
     
     def find_constant_for_bernoulli(self, max_C = 1e10):
-        """Bernoulli Sampling のオーバーサンプリング定数 C を二分探索で決定する。
-            目的：各部分集合サイズ s に対して min(1, 2*C*weight(s)) でサンプリングしたときのサンプル数の期待値が m になるように C を探す。
+        """Leverage SHAP の “全2**𝑛−2個ある部分集合 S を Bernoulli 抽選で取る”というサンプリング手法（without-replacement 版）
+        Bernoulli Sampling のオーバーサンプリング定数 C を二分探索で決定する。
+        目的：各部分集合サイズ s に対して p_s = min(1, 2*C*weight(s)/binom(self.n, s) ) という確率をかけて「取る/取らない」を決める。
+        サンプリングしたときのサンプル数の期待値が m になるように C を探す。
 
-            Args:
-                max_C (_type_, optional): _description_. Defaults to 1e10.
+        Args:
+            max_C (_type_, optional): _description_. Defaults to 1e10.
 
-            Returns:
-                _type_: _description_
+        Returns:
+            _type_: _description_
         """
         # Choose C so that sampling without replacement from min(1, C*prob) gives the same expected number of samples
         C = 1 # Assume at least n - 1 samples
@@ -139,7 +160,7 @@ class RegressionEstimator:
             except OverflowError:  # If the number of samples is too large, assume the number of samples is the expected number
                 m_s = int(prob * scipy.special.binom(self.n, s)) # 期待値を使う
             if self.paired_sampling:
-                if s == self.n // 2: # Already sampled all larger sets with the complement
+                if s == self.n // 2: # 中央サイズに到達したら、補集合を含めるとサンプリングが終了している
                     if self.n % 2 == 0: # Special handling for middle set size if n is even
                         # n が偶数かつ中央サイズなら、重複してサンプリングしないよう半分に
                         m_s_all.append(m_s // 2)
@@ -149,16 +170,16 @@ class RegressionEstimator:
             m_s_all.append(m_s)
         sampled_m = np.sum(m_s_all)
         num_rows = sampled_m if not self.paired_sampling else sampled_m * 2
-        self.SZ_binary = np.zeros((num_rows, self.n))
+        self.SZ_binary = np.zeros((num_rows, self.n))  # self.SZ_binary：GNNShapのmask_matrixに当たるので、出力したい
         idx = 0
         for s, m_s in enumerate(m_s_all):
             """
             各部分集合サイズsについて、事前に決めたサンプル数𝑚_s分だけ、combination_generator で「どの特徴量を選ぶか」の組合せを生成し、
-            その組合せを二値マスク（self.SZ_binary の行）として格納かつ対応する重み weight を add_one_sample で設定
+            その組合せを二値マスク（self.SZ_binary の行）として格納。かつ、対応する重み weight を add_one_sample で設定
             """
             s += 1
-            prob = min(1, 2*self.C * self.sample_weight(s) / scipy.special.binom(self.n, s))
-            weight = 1 / (prob * scipy.special.binom(self.n, s) * (self.n - s) * s )
+            prob = min(1, 2*self.C * self.sample_weight(s) / scipy.special.binom(self.n, s)) # 論文中のベルヌーイ分布の式
+            weight = 1 / (prob * scipy.special.binom(self.n, s) * (self.n - s) * s ) # Shapの計算に使う重み
             if self.paired_sampling and s == self.n // 2 and self.n % 2 == 0: # ペア付きかつ中央サイズの時
                 # n-1 個から (s-1) 個を選ぶ組合せを生成し、最後に要素 n-1 を追加
                 combo_gen = combination_generator(self.gen, self.n - 1, s-1, m_s)

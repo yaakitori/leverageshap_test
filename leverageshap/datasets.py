@@ -50,7 +50,19 @@ def load_dataset(dataset_name):
     return X, y # データセットの特徴量、正解ラベル
 
 # X:データセットの特徴量(load_datasetで取得したX)
-def load_input(X, seed=None, is_synthetic=False):
+def load_input(X: DataFrame, seed: int = None, is_synthetic: bool = False) -> tuple[NDArray[float64], NDArray[float64]]:
+    """SHAP値の計算に必要なベースラインとなるデータと説明対象の1インスタンスデータを取得する関数
+
+    Args:
+        X (DataFrame): データの特徴量
+        seed (int, optional): シード. Defaults to None.
+        is_synthetic (bool, optional): 人工データかどうか. Defaults to False.
+
+    Returns:
+        baseline (ndarray[float]), explicand (ndarray[float]):
+        baseline:各特徴量が各特徴量の平均値である１インスタンスのデータ（列方向で平均をとる）
+        explicand:ランダムに選ばれた、説明対象の1インスタンスのデータ
+    """
     if is_synthetic:
         baseline = np.zeros((1, X.shape[1])) # すべての特徴量が0（存在しない）のベースライン
         explicand = np.ones((1, X.shape[1])) # すべての特徴量が1（存在する存在する）の説明対象
